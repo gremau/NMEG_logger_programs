@@ -1,0 +1,659 @@
+' CR3000
+
+'  Program for CR3000 data logger at the Mature Pine Site, Sisters, OR
+'  written by Kent Davis, Oregon State University, Forest Science
+'  May 2006. Updated from John Wongs Program to include all sensors on one CR500
+'  last update 061116 by Davis
+'  modified on 080806 to add an extra HMP45 to run in parallel
+'  Changed to CR3000 to add large CF card support, added covariance table, updated commenting by Stephen Chan on Feb 2013.
+'  Covaraiance table removed, buffer depth of fast scan increased from 100 to 300, Pipline mode forced,csat_diag switched from fp2 to IEE4  and all tables set to cardout April 19 2013 by Chad Hanson
+'  Added GPS for timestamp June 20, 2014 Whitney Moore
+'  Added LI-7200 for IRGA comparsion (LI7500 vs. LI7200) as part of AmeriFlux Coresite proejct by Hyojung Kwon (Oct. 28, 2014) 
+'  Switched to TableFile with ring-fill memory mode November 19, 2014, Whitney Moore
+
+'  Log Csat3 and Licor LI-7500 at 20 Hz
+'  Log met data at 0.1 Hz
+'  Log selected averaged variables every 10 min
+
+'  Csat wiring
+'   green                SDM-C1
+'   white                SDM-C2
+'   brown                SDM-C3
+'   black/clear          G
+'   SDM address          3
+
+'  LL-7500 wiring
+'   gray                 SDM-C1
+'   blue                 SDM-C2
+'   brown                SDM-C3
+'   black/white          G
+'   SDM address          7
+
+'  LL-7200 wiring
+'   blue                 SDM-C1
+'   white                SDM-C2
+'   brown                SDM-C3
+'   black/white          G
+'   SDM address          1
+
+'  RTD-01000 wiring
+'		black						    1H
+'		orange					    1L
+'		white					    	2H
+'		green					    	2L
+' 	clear/purple	    	G
+'		red						    	VX2
+
+'  Barometric pressure RPT410F-3143
+'		green						    3H, SE 5
+'		yellow/clear        3G, signal ground
+'		red							    12V
+'		black						    G
+'   blue                5V
+
+'  R.M. Young anemometer
+'  for cup
+'   white	              P1
+'   clear/black?        ground
+
+' for vane
+'   red                 3L, SE 6
+'   black               VX1
+'   white/clear         ground
+
+'  Diff Channel 4H, 4L empty
+
+'  HMP45 - no control wire
+' 	yellow						5H (Temperature)
+'   jumper            Jumper from 5L to 6L
+' 	blue							6H (Relative humidity)
+' 	white							6L Jumper from 6L to 5L
+' 	shield						signal ground
+' 	red								12VDC
+' 	black							power ground
+
+'  Kipp and Zonen CNR1 
+'		red							  7H
+'		blue						  7L
+'		white						  8H
+'		black						  8L
+'		gray              9H
+'		yellow					  9L
+'	  brown						  10H
+'		green						  10L
+
+'  PT-100 from CNR1
+'		yellow				    11H
+'		green					    11L
+'		red						    IX3
+'		blue					    IXR
+'		clear  				    ground
+'   white             power ground
+'   black             SW12-1
+
+'  Kipp and Zonen PAR
+'   white		          12H
+'   green 		        12L
+'   sheild 	          ground
+
+'  BF3 diffuse
+'   gray              13H, SE 25
+'   white             13L, SE 26
+'   yellow		        14H, SE 27
+'   green/sheild      14G, ground
+'   red			          12V
+'   violet            power ground
+
+'	Rain Gauge
+'		black						  Pulse 2
+'   white/clear			  ground
+
+'   black/red         C2 (relay) for modem
+
+' GPS
+'  white              C5
+'  gray               C6
+'  blue               ground
+'  red                12V
+'  black              power ground
+'  yellow             ground
+'  clear              ground
+
+'----------------------------------------------------------------------------------------------------------------
+' Set Constants
+Const R = 8.3143e-3		'Universal gas constant [kPa m^3/(K mol)].
+
+' Declaring public variables
+' CSAT 3D anemometer; Ser# 0171
+Public wind(8)
+Alias wind(1) = Ux						' [m/s]
+Alias wind(2) = Uy						' [m/s]
+Alias wind(3) = Uz						' [m/s]
+Alias wind(4) = Ts						' [deg C]
+Alias wind(5) = diag_csat			' [1]
+Alias wind(6) = Vh						' [m/s]
+Alias wind(7)	=	Vh_ravg				' [m /s] backlooking running average over 10 sec
+Alias wind(8) = csat_sern     ' [1]
+
+Units Ux = [ms-1]
+Units Uy = [ms-1]
+Units Uz = [ms-1]
+Units Ts = [deg C]
+Units diag_csat = [1]
+Units Vh = [ms-1]
+
+' Li-7500 IRGA; Ser# 75H-0397 (head) and 75B-0105 (box)
+Public licor(7)
+Alias licor(1) = CO2mmol      ' [mmol / m3]
+Alias licor(2) = H2Ommol      ' [mmol / m3]
+Alias licor(3) = press_li7500 ' [kPa]
+Alias licor(4) = diag_li7500  ' [1]
+Alias licor(5) = agc_li7500   ' automatic gain control value
+Alias licor(6) = li7500h_sern ' [1] serial number of sensor head
+Alias licor(7) = li7500b_sern ' [1] serial number of electronic's box
+
+Units CO2mmol = [mmolm-3]
+Units H2Ommol = [mmolm-3]
+Units press_li7500 = [kPa]
+Units diag_li7500  = [1]
+
+' LI7200 IRGA: SN: ???   - SMD address 2
+Public lic7200(12)
+Alias lic7200(1) = co2_dry
+Alias lic7200(2) = h2o_dry
+Alias lic7200(3) = co2mmol72
+Alias lic7200(4) = h2ommol72
+Alias lic7200(5) = Agc72
+Alias lic7200(6) = fPa
+Alias lic7200(7) = tempin
+Alias lic7200(8) = tempout
+Alias lic7200(9) = ax1
+Alias lic7200(10) = ax2
+Alias lic7200(11) = ax3
+Alias lic7200(12) = ax4
+
+Units co2_dry   = umol mol-1
+Units h2o_dry   = mmol mol-1
+Units co2mmol72 = mmol m^-3
+Units h2ommol72 = mmol m^-3
+Units Agc72     = %
+Units fPa       = kPa      ' head pressure
+Units tempin    = C
+Units tempout   = C
+Units ax1       = Unitless
+Units ax2       = Unitless
+Units ax3       = Unitless
+Units ax4       = Unitless
+
+Public tempavg             'cell block temp for 7200
+Units  tempavg = C
+
+Public co272ppm
+Public h2o72ppt
+Units co272ppm  =  umol mol-1
+Units h2o72ppt  =  mmol mol-1
+
+'LI7200 diagnostic flags
+Public diag_irga_72
+Units diag_irga_72 = unitless
+
+Public diag_bits72(9)                  '1 is good, 0 is bad
+
+Alias diag_bits72(1) = head_f_72       'Head unit.
+Alias diag_bits72(2) = tout_f_72       'T outlet flag.
+Alias diag_bits72(3) = tin_f_72        'T inlet flag.
+Alias diag_bits72(4) = aux_inp_f_72    'Aux input flag.
+Alias diag_bits72(5) = diff_pre_f_72   'Pressure differential flag.
+Alias diag_bits72(6) = chopper_f_72    'Chopper warning flag.
+Alias diag_bits72(7) = detector_f_72   'Detector warning flag.
+Alias diag_bits72(8) = pll_f_72        'PLL warning flag.
+Alias diag_bits72(9) = sync_f_72       'Synchronization warning flag
+
+
+' Slow response, aspirated temperature probe RTD-1000 in Young radiation shield
+' Ser# see Tp_sern
+Public rtdprobe(5)
+Alias rtdprobe(1) = Tp_slow   ' [deg C]
+Alias rtdprobe(2)	=	Tp_sern   ' [1]
+Alias rtdprobe(3) = Tp_slope  ' [deg C / mV]
+Alias rtdprobe(4) = TP_offset ' [deg C]
+Alias rtdprobe(5) = rtd_sern
+
+Units Tp_slow = [deg C]
+Units Tp_slope = [deg C]
+Units TP_offset = [deg C]
+
+'wind speed and wind direction from cup anemometer
+Public cup_anem(7)
+Alias cup_anem(1) = windspd_raw
+Alias cup_anem(2) = winddir
+Alias cup_anem(3) = windspd
+Alias cup_anem(4) = windspd_sum
+Alias cup_anem(5) = cup_sern
+Alias cup_anem (6)=windspd_inst
+Alias cup_anem (7)=windspd_corr
+
+Units windspd_raw = [mv]
+Units winddir = [deg]
+Units windspd = [ms-1]
+Units windspd_sum = [#]
+Units windspd_inst=[m-s]
+
+'HMP Temp. and RH
+Public HMP(3)
+Alias HMP(1) = HMP_temp_C
+Alias HMP(2) = HMP_RH_percent
+Alias HMP(3)= HMP_sern
+
+Units HMP_temp_C  = [deg C]
+Units HMP_RH_percent = [%]
+
+'rain gauge
+Public rain_mm
+Public rain_mm_sum
+
+Units rain_mm = [mm]
+
+'Campbell CNR1
+Public CNR1(12)
+Alias CNR1(1) = RS_downwell
+Alias CNR1(2) = RS_upwell
+Alias CNR1(3) = RL_downwell
+Alias CNR1(4) = RL_upwell
+Alias CNR1(5) = RNET
+Alias CNR1(6) = Temp_CNR1
+Alias CNR1(7) = Albedo
+Alias CNR1(8) = Rl_down_meas
+Alias CNR1(9) = Rl_up_meas
+Alias CNR1(10) = Temp_CNR1_K
+Alias CNR1(11) = CNR1_sern
+Alias CNR1(12)=CNR1heat
+Public Temp_CNR1_raw
+
+Units CNR1 = [Wm-2]
+Units Temp_CNR1 = [deg C]      'CT: added unit
+Units Albedo= [1]
+Units Temp_CNR1 = [K]
+
+'Kipp and zonen PAR
+Public PAR_raw
+Public PAR_umolsm
+Public PAR_sern
+
+Units PAR_raw = [mV]
+Units PAR_umolsm = [umolsm2]
+
+'BF3 diffuse
+Public	BFdiff
+Public	BFtotal
+Public	BFsun
+
+Units	BFdiff = [umolm2s]
+Units	BFtotal = [umolm2s]
+Units	BFsun	= [on/off]
+
+' Logger status related variables
+Public battV
+Public panelT
+
+Units  battV = [V]									' [V}
+Units  panelT = [deg C]							' [deg C}
+
+'Barometric pressure
+Public Press_atm_raw
+Public Press_atm_rawavg
+Public Press_atm_kPa
+
+Units Press_atm_raw = [kPa]
+Units Press_atm_kPa = [kPa]
+Units Press_atm_rawavg = [hPa]
+
+'Covariance variables
+Public cov_array(3,4)
+
+'Definitions - GPS data
+Const LOCAL_TIME_OFFSET = -8            'Local time offset relative to UTC site
+
+Public counter
+Public nmea_sentence(2) As String * 82
+Public gps_data(15)
+
+Alias gps_data(1) = latitude_d          'Degrees latitude (+ = East; - = West)
+Alias gps_data(2) = latitude_m          'Minutes latitude
+Alias gps_data(3) = longitude_d         'Degrees longitude (+ = East; - = West)
+Alias gps_data(4) = longitude_m         'Minutes longitude
+Alias gps_data(5) = speed               'Speed
+Alias gps_data(6) = course              'Course over ground
+Alias gps_data(7) = magnetic_variation  'Magnetic variation from true north (+ = East; - = West)
+Alias gps_data(8) = fix_quality         'GPS fix quality:  0 = invalid, 1 = GPS, 2 = differential GPS, 6 = estimated
+Alias gps_data(9) = nmbr_satellites     'Number of satellites used for fix
+Alias gps_data(10) = altitude           'Antenna altitude
+Alias gps_data(11) = pps                'Elapsed ms since last pulse per second (PPS) from GPS
+Alias gps_data(12) = dt_since_gprmc     'Time since last GPRMC string, normally less than 1 second
+Alias gps_data(13) = gps_ready          'Counts from 0 to 10, 10 = ready
+Alias gps_data(14) = max_clock_change   'Maximum value the clock was changed
+Alias gps_data(15) = nmbr_clock_change  'Number of times the clock was changed
+
+Units latitude_d = degrees
+Units latitude_m = minutes
+Units longitude_d = degrees
+Units longitude_m = minutes
+Units speed = knots
+Units course = degrees
+Units magnetic_variation = degrees
+Units fix_quality = unitless
+Units nmbr_satellites = satellites
+Units altitude = m
+Units pps = ms
+Units dt_since_gprmc = s
+Units gps_ready = unitless
+Units max_clock_change = ms
+Units nmbr_clock_change = samples
+
+'Dimensions - GPS
+Public clock_change
+Dim clock_change_n = 1
+
+' non-public variables
+Dim diag_op
+Dim csat_flag
+Dim li7500_flag
+
+'----------------------------------------------------------------------------------------------------------------
+' Declaring fast response and average data tables
+
+DataTable(MP31M_TS,1,-1)
+  DataInterval(0,50,mSec,0)
+  Sample (4,wind(1),FP2)
+  Sample (1,diag_csat,IEEE4)
+  Sample (3,licor(1),IEEE4)
+  Sample (1,diag_li7500,FP2)
+  Sample (1,licor(5),IEEE4)
+  Sample (2,co2_dry,IEEE4)
+  Sample (1,fPa,IEEE4) 
+  Sample (1,diag_irga_72,IEEE4) 
+  Sample (1,Agc72,IEEE4)
+  TableFile("crd:MP31M_ts",64,-1,0,1,Day,0,0)
+  'CardOut (0,-1)
+EndTable
+
+DataTable (MP31M_av,1,-1)
+  DataInterval (0,10,min,0)
+  Average (4,wind(1),FP2,csat_flag)
+  Average (1,Vh,FP2,csat_flag)
+  Average (3,licor(1),FP2,li7500_flag)
+  Average (1,Tp_slow,FP2,False)
+  Average (2,HMP(1),FP2,False)
+  Average (1,PAR_umolsm,FP2,false)
+  Average (7,RS_downwell,FP2,false)
+  Average (1,BFdiff,FP2,false)
+  Average (1,BFtotal,FP2,false)
+  Average (1,Press_atm_kPa,FP2,False)
+  WindVector (1,windspd_corr,winddir,FP2,False,0,0,1)
+  Maximum(1,windspd_corr,FP2,false,False)
+  Totalize(1,rain_mm,FP2,False)
+  Average (1,battV,FP2,false)
+  TableFile("crd:MP31M_av",64,-1,0,1,Day,0,0)
+  'CardOut (0,-1)
+EndTable
+
+
+'Data Storage - GPS data
+DataTable (gps_stats,TRUE,-1)
+  DataInterval (0,1,Min,10)
+  Average (4,latitude_d,IEEE4,False)
+  Average (2,magnetic_variation,IEEE4,False)
+  Average (1,altitude,IEEE4,False)
+  Maximum (1,nmbr_satellites,IEEE4,False,False)
+  Average (1,clock_change,Long,clock_change=0)
+  Minimum (1,clock_change,Long,FALSE,FALSE)
+  Maximum (1,clock_change,Long,FALSE,FALSE)
+  Totalize (1,clock_change_n,Long,clock_change=0)
+  Sample (1,max_clock_change,Long)
+  Sample (1,nmbr_clock_change,Long)
+  Average (1,gps_ready,IEEE4,FALSE)
+  Average (1,dt_since_gprmc,IEEE4,FALSE)
+  StdDev (1,dt_since_gprmc,IEEE4,FALSE)
+  Minimum (1,dt_since_gprmc,IEEE4,FALSE,FALSE)
+  Maximum (1,dt_since_gprmc,IEEE4,FALSE,FALSE)
+  TableFile("crd:gps_stats",64,-1,0,1,Day,0,0)
+  'CardOut (0,-1)
+EndTable
+
+DataTable (gps_ts_data,TRUE,50)
+  DataInterval (0,1,Sec,10)
+  Sample (2,nmea_sentence(1),String)
+  Sample (15,latitude_d,IEEE4)
+EndTable
+
+'----------------------------------------------------------------------------------------------------------------
+' Main program body
+PipeLineMode
+BeginProg
+  'Setting coeffs for slow response temperature probe
+  Tp_sern   = 0
+  TP_offset = -266.2932		'from Johns programs
+  Tp_slope  = 266.1933		'from Johns programs
+
+  'Setting coeffs for CSAT
+  csat_sern		= 0171
+
+  'Setting coeffs for Li-7500
+  li7500h_sern = 0026
+  li7500b_sern = 0105
+
+  ' Start of fast measuring sequence
+  Scan (50,mSec,300,0)
+    PortSet (1,1)
+    SDMSpeed(50)
+    CSAT3 (wind(1),1,3,91,20)     ' CT: Are you sure about the SDM address?
+    CS7500 (licor(1),1,2,6)
+    Vh = SQR (Ux^2+Uy^2)
+    AvgRun (Vh_ravg,1,Vh,200)
+    'Swap the LI-7500 diagnostic bit state.
+    diag_op = diag_li7500
+    diag_op = diag_op XOR &h00f0
+    'Compute the AGC.
+    agc_li7500 = INT ((diag_op AND &h000f) * 6.25 + 0.5)
+
+    ' Check if Csat data contains NaNs, if yes discard for averaging
+    If diag_csat < 64 Then
+      csat_flag = False
+    Else
+      csat_flag = True
+    EndIf
+
+    ' Check if Li7500 data contains NaNs, if yes discard for averaging
+    ' values below 240 indicate failure of either PLL,chopper, detector or sync
+    ' values above 252 indicate AGCs above 68.5%
+    If diag_li7500 > 240 AND diag_li7500 < 252
+      li7500_flag = False
+    Else
+      li7500_flag = True
+    EndIf
+
+
+   'LI-7200
+    LI7200(lic7200(1),1,1,3)
+    LI7200(diag_irga_72,1,1,6)    'Get LI-7200 diagnostic flag
+
+    'DIAGNOSTIC FLAGS 7200 
+    'Swap the LI-7200 diagnostic bit state.
+    diag_irga_72 = diag_irga_72 XOR &h1ff0    '0001111111110000
+
+    sync_f_72 = (diag_irga_72 AND &h0010)/&h0010
+    pll_f_72 = (diag_irga_72 AND &h0020)/&h0020
+    detector_f_72 = (diag_irga_72 AND &h0040)/&h0040
+    chopper_f_72 = (diag_irga_72 AND &h0080)/&h0080
+    diff_pre_f_72 = (diag_irga_72 AND &h0100)/&h0100
+    aux_inp_f_72 = (diag_irga_72 AND &h0200)/&h0200
+    tin_f_72  = (diag_irga_72 AND &h0400)/&h0400
+    tout_f_72 = (diag_irga_72 AND &h0800)/&h0800
+    head_f_72 = (diag_irga_72 AND &h1000)/&h1000
+    
+    'Save only the 12 most significant bits of the LI-7200 diagnostic word.
+    diag_irga_72 = INT ((diag_irga_72 AND &h1ff0)/&h0010)
+    
+    'calculate cell temperature of 7200
+    tempavg  = (0.2*tempin+0.8*tempout)
+
+    'wet co2 and h2o values from 7200
+    co272ppm = co2mmol72*R*(tempavg+273.15) / fPa*1000
+    h2o72ppt = h2ommol72*R*(tempavg+273.15) / fPa
+
+
+    'Measure met data that can't go in slow sequence
+    PulseCount(windspd_raw,1,1,1,0,1,0)															 ' measures wind speed from cup anemometer
+    PulseCount(rain_mm,1,2,2,0,0.254,0)                              ' tipping bucket rain gauge
+    rain_mm_sum = rain_mm_sum + rain_mm
+    windspd_sum=windspd_sum+windspd_raw
+    PeriodAvg(Press_atm_raw,1,mV5000,5,0,1,10,20,1,0)                ' pressure 
+
+    CallTable MP31M_ts
+    CallTable MP31M_av
+    
+  Next Scan
+  
+  '----------------------------------------------------------------------------------------------------------------
+  ' Slow sequence
+  SlowSequence
+  ' Defining data tables
+  DataTable (MP31M_mt,1,-1)
+    DataInterval(0,10,Sec,10)
+    Sample (1,Tp_slow,FP2)
+    Sample (2,HMP(1),FP2)
+    Sample (1,rain_mm_sum,FP2)
+    Sample (1,PAR_raw,IEEE4)
+    Sample (1,PAR_umolsm,FP2)
+    Sample (1,BFdiff,IEEE4)
+    Sample (1,BFtotal,IEEE4)
+    Sample (1,BFsun,fp2)
+    Sample (10,CNR1,FP2)
+    Sample (1,windspd_corr,fp2)
+    Sample (1,winddir,fp2)
+    Sample (1,Press_atm_kPa, FP2)
+    Sample (1,battV,FP2)
+    Sample (1,panelT,FP2)
+    TableFile("crd:MP31M_mt",64,-1,0,1,Day,0,0)
+    'CardOut (0,432000)
+  EndTable
+
+  'setting coefficents for met data
+  Const wind_spd_mult = 0.75
+  Const wind_spd_offset = 0.2
+  Const wind_dir_const = 0.142				  'from johns programs
+  Const press_atm_const = 0.1
+  Const NR_sensitive = .0156						'from johns program
+  Const PAR_const = 144.35 						'umol/sm2 per mv
+  rtd_sern = 0
+  cup_sern = 0
+  HMP_sern = 0
+  CNR1_sern = 0
+  PAR_sern = 60752
+  
+  ' Start of slow sequence
+  Scan (10,Sec,0,0)
+    
+    ' Panel temp and battery voltage
+    PanelTemp (panelT,250)
+    Battery (battV)
+    
+    ' slow response RTD-1000
+    BrHalf4W (Tp_slow,1,mV200,mV200,1,Vx2,1,2000,True,True,200,250,Tp_slope,TP_offset)
+
+    'Converting press_atm_raw
+    AvgRun (Press_atm_rawavg,1,Press_atm_raw,200)
+    Press_atm_kPa = Press_atm_rawavg * press_atm_const
+
+    'HMP45
+    VoltDiff(HMP_temp_C,1,mV1000,5,0,0,0,0.1,-40)
+    VoltDiff(HMP_RH_percent,1,mV1000,6,0,0,0,0.1,0)
+    
+    'limit HMP RH output to 100%
+    If HMP_RH_percent>100 Then
+      HMP_RH_percent = 100
+    EndIf
+
+    'CNR1
+    VoltDiff(RS_downwell,1,mV20C,7,true,200,250,92.506,0)			
+    VoltDiff(RS_upwell,1,mV20C,8,true,200,250,92.506,0)			 
+    VoltDiff(Rl_down_meas,1,mv20C,9,true,250,250,92.506,0)
+    VoltDiff(Rl_up_meas,1,mv20C,10,true,250,250,92.506,0)
+    If RS_downwell < 10 Then
+      RS_downwell=0
+      RS_upwell =0
+    EndIf
+
+    'CNR1 temperature
+    Resistance(Temp_CNR1_raw,1,mV5000,11,Ix3,1,1000,False,False,0,0,.01,0)
+    PRT(Temp_CNR1,1,Temp_CNR1_raw,1,0)
+    'converting CNR1 temperture to Kelvin
+    Temp_CNR1_K= Temp_CNR1 + 273.15
+
+    'compute net radiation, albedo, downwelling, and upwelling longwave radiation
+    Albedo=RS_upwell/RS_downwell
+    RL_downwell=Rl_down_meas+(5.67e-8*Temp_CNR1_K*Temp_CNR1_K*Temp_CNR1_K*Temp_CNR1_K)
+    RL_upwell=Rl_up_meas+(5.67e-8*Temp_CNR1_K*Temp_CNR1_K*Temp_CNR1_K*Temp_CNR1_K)
+    RNET=RS_downwell-RS_upwell+RL_downwell-RL_upwell
+
+    'turning on CNR1 heater
+    CNR1heat = 0
+    If HMP_RH_percent > 80 Then
+      SW12 (1,1)
+      CNR1heat = 1
+    EndIf
+
+    If HMP_RH_percent <79.9 Then
+      SW12(1,0)
+      CNR1heat=0
+    EndIf
+
+    'RM Young anemometer 
+    ExciteV (vx1,5000,0)
+    VoltSe(winddir,1,mv5000,6,0,0,0,.072,0)
+    windspd_inst=windspd_sum/10
+    windspd_corr=windspd_inst*wind_spd_mult +wind_spd_offset
+
+    'conversion for wind speed,
+    If windspd_corr <= wind_spd_offset Then
+      windspd_corr = 0
+    Else
+      windspd_corr = windspd_corr
+    EndIf
+
+    'Kipp and Zonen PAR
+    VoltDiff (PAR_raw,1,mv20,12,0,0,0,1,0)
+    PAR_umolsm=PAR_raw*PAR_const
+
+    'BF3 diff
+    VoltSe (BFdiff,1,mV5000,25,0,0,0,1,0)
+    VoltSe (BFtotal,1,mV5000,26,0,0,0,1,0)
+    VoltSe (BFsun,1,mV5000,27,0,0,0,1,0)
+    If BFsun>3000 Then
+      BFsun=1
+    ElseIf BFsun<3000 Then
+      BFsun=0
+    EndIf
+
+    CallTable MP31M_mt
+    rain_mm_sum = 0
+    windspd_sum=0
+
+'   If IfTime (0,12,HR)  Then WriteIO (&B10,&B10)
+'   If IfTime (10,60,Sec) Then WriteIO (&B10,&B00)
+    
+  Next Scan
+
+'Program - GPS
+
+    SlowSequence  
+    Scan (1,Sec,0,0)
+      counter += 1
+      GPS (latitude_d,COM3,LOCAL_TIME_OFFSET*3600,20,nmea_sentence(1))
+
+      clock_change = ClockChange
+      CallTable gps_stats
+      CallTable gps_ts_data
+      If ( gps_stats.Output(1,1) ) Then ( Move (max_clock_change,2,0,1) )
+  Next Scan
+EndProg
