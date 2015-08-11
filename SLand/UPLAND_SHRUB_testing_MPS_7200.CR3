@@ -542,6 +542,9 @@ Alias MPS6_Temp (10) = MPS6_O3_15_T
 Alias MPS6_Temp (11) = MPS6_O3_22p5_T
 Alias MPS6_Temp (12) = MPS6_O3_37p5_T
 
+'Declare number of MPS sensors
+Dim GSnum = 12 ' Number of MPS6 sensors
+Dim mps6index=1 ' Counter index for MPS6 sensors
 Units MPS6_Temp = C
 
 Public MPS6_Press(12)
@@ -1409,19 +1412,80 @@ BeginProg
   NextScan
 
   SlowSequence
-  Scan (5,Sec,3,0)
+  
+  ' Clock through and measure first AM 16/32 MUX. Needs three loops:
+  ' First loop = 4 shf plates and 4 MPS6 water potential probes
+  ' Second loop = 8 Soil CO2 probes and 8 MPS6 water potential probes
+  ' Third loop = 2 remaining Soil CO2 probes
+  ' Also measure a TCAV and PAR down sensor after loops
+  
+  Scan (15,Min,3,0)
     PortSet (2,TRUE)
 
     ii=1
     SubScan (0,mSec,4)
       PulsePort (1,10000)
+      ' Measure heatflux plates 1-4
       VoltDiff (shf(ii),1,mV50C,9,TRUE,200,250,shf_cal(ii),0)
       ii=ii+1
-    NextSubScan
+      ' Measure MPS6 sensors 1-4
+      PortSet(9,1)
+      'Below is only way to get long enough delay in needed between each probe (told by Jacob at CSI)
+		  Delay (0,20,mSec)
+		  Delay (0,20,mSec)
+		  Delay (0,20,mSec)
+		  Delay (0,20,mSec)
+      Delay (0,20,mSec)
+      Delay (0,20,mSec)
+      Delay (0,20,mSec)
+      Delay (0,20,mSec)
+      Delay (0,20,mSec)
+      Delay (0,20,mSec)
 
+      'collect all data from MPS6 probes on the AM16/32 Multiplexer
+			SDI12Recorder (MPS6(1,1),3,0,"M!",1.0,0)
+			MPS6_Press(mps6index) = MPS6(1,1)
+			MPS6_Temp(mps6index) = MPS6(1,2)
+			mps6index=mps6index+1
+			'Turn off SW-12
+			PortSet(9,0)
+
+		NextSubScan
+      
+   
     ii=1
-    SubScan (0,mSec,10)
+    SubScan (0,mSec,8)
       PulsePort (1,10000)
+      ' Measure SoilCo2 1-10
+      VoltDiff (Soil_CO2(ii),1,mV1000,9,TRUE,200,250,10,0)
+      ii=ii+1
+      ' Measure MPS6 sensors 5-12
+      PortSet(9,1)
+      'Below is only way to get long enough delay in needed between each probe (told by Jacob at CSI)
+      Delay (0,20,mSec)
+		  Delay (0,20,mSec)
+		  Delay (0,20,mSec)
+		  Delay (0,20,mSec)
+		  Delay (0,20,mSec)
+		  Delay (0,20,mSec)
+      Delay (0,20,mSec)
+      Delay (0,20,mSec)
+      Delay (0,20,mSec)
+      Delay (0,20,mSec)
+
+      'collect all data from MPS6 probes on the AM16/32 Multiplexer
+			SDI12Recorder (MPS6(1,1),3,0,"M!",1.0,0)
+			MPS6_Press(mps6index) = MPS6(1,1)
+			MPS6_Temp(mps6index) = MPS6(1,2)
+			mps6index=mps6index+1
+			'Turn off SW-12
+			PortSet(9,0)
+    NextSubScan
+    
+
+    SubScan (0,mSec,2)
+      PulsePort (1,10000)
+      ' Measure SoilCo2 9-10
       VoltDiff (Soil_CO2(ii),1,mV1000,9,TRUE,200,250,10,0)
       ii=ii+1
     NextSubScan
@@ -1431,46 +1495,24 @@ BeginProg
 
     PulsePort (1, 10000)
     VoltDiff (par(2),1,mV50C,9,True,450,450,PAR_mult_KZ_down,0)
-    
-    Delay(0,150,mSec)
-
-    iii=1
-    SubScan (0,mSec,12)
-    'For i = 1 To GSnum
-			PulsePort(1,10000)
-			'Turn on SW-12 to power each probe
-			'PortSet (9,1) 'Turned off assuming mux continuously gets 12V and no need for SW-12V (JF 07212015)
-			'Delay to allow GS3 serial string to complete and probe to enter SDI-12 state
-			
-			Delay (0,500,mSec)
-			'collect all data from GS3 probes on the AM16/32 Multiplexer
-			SDI12Recorder (MPS6(1,1),3,0,"M!",1.0,0)
-			  MPS6_Press(iii) = MPS6(1,1)
-			  MPS6_Temp(iii) = MPS6(1,2)
-      iii=iii+1
-			'Turn off SW-12
-			'PortSet(9,0)
-		Delay(0,150,mSec)
-		NextSubScan
-
-
-    PulsePort (1, 10000)
-    VoltDiff (battbank,1,mV5000,9,TRUE,200,250,0.01,0)
-
-    PulsePort (1,10000)
-    VoltDiff (panelV,1,mV5000,9,True,200,250,0.01,0)
 
     PortSet (2,FALSE)
 
 
     PortSet (4,TRUE) 'Turn on soil moisture AM16/32.
     iii=1
-    SubScan (0,mSec,10)
+    SubScan (0,msec,10)
       PulsePort (5,10000)
       CS616 (SWC(iii),1,25,6,1,1,0)
       CS616 (SWC(iii+1),1,26,6,1,1,0)
       iii=iii+2
     NextSubScan
+    
+    PulsePort (5, 10000)
+    VoltDiff (battbank,1,mV5000,13,TRUE,200,250,0.01,0)
+
+    PulsePort (5,10000)
+    VoltDiff (panelV,1,mV5000,13,True,200,250,0.01,0)
 
     PortSet (4,FALSE) 'Turn off soil moisture AM16/32.
 
