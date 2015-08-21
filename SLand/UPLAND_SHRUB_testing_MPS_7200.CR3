@@ -526,7 +526,11 @@ Alias SoilT (20) = SoilT_S2_52p5
 
 Units SoilT = C
 
-Public MPS6(2)
+'Declare number of MPS sensors
+Dim MPSnum = 12 ' Number of MPS6 sensors
+Dim mps6index ' Counter index for MPS6 sensors
+
+Public MPS6(12,2)
 
 Public MPS6_Temp(12)
 Alias MPS6_Temp (1) = MPS6_S1_15_T
@@ -542,9 +546,6 @@ Alias MPS6_Temp (10) = MPS6_O3_15_T
 Alias MPS6_Temp (11) = MPS6_O3_22p5_T
 Alias MPS6_Temp (12) = MPS6_O3_37p5_T
 
-'Declare number of MPS sensors
-Dim GSnum = 12 ' Number of MPS6 sensors
-Dim mps6index=1 ' Counter index for MPS6 sensors
 Units MPS6_Temp = C
 
 Public MPS6_Press(12)
@@ -1420,8 +1421,10 @@ BeginProg
   ' Also measure a TCAV and PAR down sensor after loops
   
   Scan (15,Min,3,0)
+    
+    mps6index=1
     PortSet (2,TRUE)
-
+    
     ii=1
     SubScan (0,mSec,4)
       PulsePort (1,10000)
@@ -1431,22 +1434,23 @@ BeginProg
       ' Measure MPS6 sensors 1-4
       PortSet(9,1)
       'Below is only way to get long enough delay in needed between each probe (told by Jacob at CSI)
-		  Delay (0,20,mSec)
-		  Delay (0,20,mSec)
-		  Delay (0,20,mSec)
-		  Delay (0,20,mSec)
-      Delay (0,20,mSec)
-      Delay (0,20,mSec)
-      Delay (0,20,mSec)
-      Delay (0,20,mSec)
-      Delay (0,20,mSec)
-      Delay (0,20,mSec)
+		   Delay (0,20,mSec)
+		   Delay (0,20,mSec)
+		   Delay (0,20,mSec)
+		   Delay (0,20,mSec)
+       Delay (0,20,mSec)
+       Delay (0,20,mSec)
+		   Delay (0,20,mSec)
+		   Delay (0,20,mSec)
+		   Delay (0,20,mSec)
+       Delay (0,20,mSec)
+
 
       'collect all data from MPS6 probes on the AM16/32 Multiplexer
-            Move(MPS6(),2,NaN,1)
-			SDI12Recorder (MPS6(),3,"0","M!",1.0,0)
-			MPS6_Press(mps6index) = MPS6(1)
-			MPS6_Temp(mps6index) = MPS6(2)
+      'Move(MPS6(),2,NaN,1)
+			SDI12Recorder (MPS6(mps6index,1),3,0,"M!",1.0,0)
+			'MPS6_Press(mps6index) = MPS6(1)
+			'MPS6_Temp(mps6index) = MPS6(2)
 			mps6index=mps6index+1
 			'Turn off SW-12
 			PortSet(9,0)
@@ -1475,16 +1479,21 @@ BeginProg
       Delay (0,20,mSec)
 
       'collect all data from MPS6 probes on the AM16/32 Multiplexer
-	        Move(MPS6(),2,NaN,1)
-			SDI12Recorder (MPS6(),3,"0","M!",1.0,0)
-			MPS6_Press(mps6index) = MPS6(1)
-			MPS6_Temp(mps6index) = MPS6(1)
+	    'Move(MPS6(),2,NaN,1)
+			SDI12Recorder (MPS6(mps6index,1),3,0,"M!",1.0,0)
+			'MPS6_Press(mps6index) = MPS6(1)
+			'MPS6_Temp(mps6index) = MPS6(1)
 			mps6index=mps6index+1
 			'Turn off SW-12
 			PortSet(9,0)
     NextSubScan
     
-
+    For j = 1 To MPSnum
+			  'VWC(j) = 4.3E-6 * MPS6(j,1)^3 - 5.5E-4 * MPS6(j,1)^2 + 2.92E-2 * MPS6(j,1) - 5.3E-2
+			  MPS6_Press(j) = MPS6(j,1)
+			  MPS6_Temp(j) = MPS6(j,2)
+		Next j
+		 
     SubScan (0,mSec,2)
       PulsePort (1,10000)
       ' Measure SoilCo2 9-10
