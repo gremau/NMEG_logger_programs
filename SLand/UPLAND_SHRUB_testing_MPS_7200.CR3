@@ -313,7 +313,7 @@ Public h2o_mm_m
 Units co2_um_m = umol/mol
 Units h2o_mm_m = mmol/mol
 
-
+' Most of these are not read to
 Public aligned_data2(10)
 Alias aligned_data2(1) = co22_dry
 Alias aligned_data2(2) = h2o2_dry
@@ -337,6 +337,34 @@ Units agc2 = %
 Units irga2_Tin = C
 Units irga2_Tout = C
 Units irga2_CellT = C
+
+
+'No delay LI-7200 data.
+' Greg moved this up and made it public so variables would show up in public
+' table and are useful in field diagnosis (aligned_data2 has no data)
+
+Public irga2_raw(10)
+Alias irga2_raw(1) = co22_dry_raw
+Alias irga2_raw(2) = h2o2_dry_raw
+Alias irga2_raw(3) = co22_raw
+Alias irga2_raw(4) = h2o2_raw
+Alias irga2_raw(5) = agc2_raw
+Alias irga2_raw(6) = press2_raw
+Alias irga2_raw(7) = irga2_Tin_raw
+Alias irga2_raw(8) = irga2_Tout_raw
+Alias irga2_raw(9) = irga2_CellT_raw
+Alias irga2_raw(10) = aux1_raw
+
+Public diag_irga2_raw
+
+Units co22_dry_raw = umol/mol
+Units h2o2_dry_raw = mmol/mol
+Units co22_raw = mmol/m^-3
+Units h2o2_raw = mmol/m^-3
+Units agc2_raw = %
+Units press2_raw = kPa      ' head pressure
+Units aux1       = Unitless
+Units diag_irga2_raw = Unitless
 
 
 
@@ -772,30 +800,6 @@ Units h2o_raw = mmol/m^3
 Units press_raw = kPa
 Units diag_irga_raw = unitless
 
-'No delay LI-7200 data.
-
-Dim irga2_raw(10)
-Alias irga2_raw(1) = co22_dry_raw
-Alias irga2_raw(2) = h2o2_dry_raw
-Alias irga2_raw(3) = co22_raw
-Alias irga2_raw(4) = h2o2_raw
-Alias irga2_raw(5) = agc2_raw
-Alias irga2_raw(6) = press2_raw
-Alias irga2_raw(7) = irga2_Tin_raw
-Alias irga2_raw(8) = irga2_Tout_raw
-Alias irga2_raw(9) = irga2_CellT_raw
-Alias irga2_raw(10) = aux1_raw
-
-Public diag_irga2_raw
-
-Units co22_dry_raw = umol/mol
-Units h2o2_dry_raw = mmol/mol
-Units co22_raw = mmol/m^-3
-Units h2o2_raw = mmol/m^-3
-Units agc2_raw = %
-Units press2_raw = kPa      ' head pressure
-Units aux1       = Unitless
-Units diag_irga2_raw = Unitless
 
 'No delay analog measurements.
 Dim panelT_3000_in
@@ -819,7 +823,7 @@ Dim wind_east					'East wind in compass coordinate system.
 Dim wind_north					'North wind in compass coordinate system.
 Dim save_ts_flag_on As Boolean	'Used to synchronize the time series output to the even minute.
 Dim dly_data_out(10)			'Variable used to temporarily store the lagged record.
-Dim dly_data2_out(14)			'Variable used to temporarily store the lagged record.
+Dim dly_data2_out(15)			'Variable used to temporarily store the lagged record.
 Dim rho_d_mean					'Density of dry air used in Webb et al. term [kg / m^3].
 Dim diag_csat_work As Long		'Working variable used to break out the CSAT3 diagnostic bits.
 Dim diag_irga_work As Long		'Working variable used to break out the LI-7500 diagnostic bits.
@@ -1008,6 +1012,7 @@ DataTable (dly_data2,TRUE,OFFSET)
   Sample (1,h2o2_dry_raw,IEEE4)
   Sample (1,co22_raw,IEEE4)
   Sample (1,h2o2_raw,IEEE4)
+  Sample (1,agc2_raw,IEEE4)
   Sample (1,press2_raw,IEEE4)
   Sample (1,irga2_Tin_raw,IEEE4)
   Sample (1,irga2_Tout_raw,IEEE4)
@@ -1166,7 +1171,7 @@ BeginProg
     CallTable dly_data2
 
     If ( scan_count >= OFFSET ) Then
-      'Load in the analog data that has been lagged by OFFSET scans.
+      'Load in the analog data that hasL been lagged by OFFSET scans.
       GetRecord (dly_data_out(1),dly_data,OFFSET)
       GetRecord (dly_data2_out(1),dly_data2,OFFSET)
       Move (panel_temp,1,dly_data_out(1),1)	'panel_temp
@@ -1184,7 +1189,7 @@ BeginProg
       Move (co2,4,dly_data_out(7),4)		'co2, h2o, press, diag_irga
 
       GetRecord (dly_data2_out(1),dly_data2,IRGA_REC_BCK)
-      Move (co22_raw,6,dly_data2_out(7),6)		'co2, h2o, press, diag_irga
+      Move (co22_dry_raw,6,dly_data2_out(7),6)		'co2, h2o, press, diag_irga
 
       'Copy and convert CSAT3 for compass wind vector computation.
       wind_east = -1*Uy
