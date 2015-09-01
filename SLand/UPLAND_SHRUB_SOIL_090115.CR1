@@ -1,0 +1,316 @@
+'CR1000 Series Datalogger
+'To create a different opening program template, type in new
+'instructions and select Template | Save as Default Template
+'date:
+'program author:
+
+'Declare Public Variables
+'Example:
+SequentialMode
+Public PTemp, batt_volt
+
+'Declare Other Variables
+
+
+'Declare Constants
+'original REBS hft3 plates
+'Const HFT_CAL_1 = 37.78			'Unique multiplier for HFT3 #1.
+'Const HFT_CAL_2 = 40.49			'Unique multiplier for HFT3 #2.
+
+'Hukesflux plates prior to the burn
+'Const HFP01_CAL_1= 15.75    'unique multiplier for HFP01SC #1 (1000/sensitivity)   GRASS   1000/63.5
+'Const HFP01_CAL_2= 15.85    'unique multiplier for HFP01SC #1 (1000/sensitivity)   OPEN   1000/63.1
+'Const HFP01_CAL_2= 35.5    'unique multiplier for HFP01SC #2 (1000/sensitivity)
+'  NOTE - heat flux plate cal 2 factor was 35.5 from 2/20-3/4   Changed to current value on 3/5
+
+'heat flux plates at site 2/17/09 - not sure who isntalled
+'did not reinstall after burn
+'Const HFT_CAL_1 = 34.6			'Unique multiplier for HFT3 #1. open
+'Const HFT_CAL_2 = 35.5			'Unique multiplier for HFT3 #2. grass
+
+
+
+
+Const HFP01_CAL_1 = 15.34    'unique multiplier for HFP01SC #1 (1000/sensitivity)
+Const HFP01_CAL_2 = 15.72    'unique multiplier for HFP01SC #2 (1000/sensitivity)
+Const HFP01_CAL_3 = 15.72    'unique multiplier for HFP01SC #3 (1000/sensitivity)
+Const HFP01_CAL_4 = 16.20    'unique multiplier for HFP01SC #4 (1000/sensitivity)
+
+
+'*** AM16/32A Constants and Variables ***
+
+Dim dsbl_flg_on_mux As Boolean	'Disable output processing, unless new AM16/32A measurements were made.
+Dim AM25T_dsble_flg_on_mux As Boolean
+Dim i
+Dim ii
+Dim iii
+Dim j
+
+Public panelT_1000
+Units panelT_1000 = C
+
+Public shf(4)
+Alias shf(1) = shf_sh_1
+Alias shf(2) = shf_sh_2
+Alias shf(3) = shf_op_1
+Alias shf(4) = shf_op_2
+
+Units shf = W/m^2
+Public shf_cal(4)	'Soil heat flux plate calibration coefficients.
+Units shf_cal = W/(m^2 mV)
+
+
+Public Soil_CO2(10)
+Alias Soil_CO2(1)=Soil_CO2_S1_5
+Alias Soil_CO2(2)=Soil_CO2_S1_10
+Alias Soil_CO2(3)=Soil_CO2_S1_30
+Alias Soil_CO2(4)=Soil_CO2_S2_5
+Alias Soil_CO2(5)=Soil_CO2_S2_10
+Alias Soil_CO2(6)=Soil_CO2_S2_30
+Alias Soil_CO2(7)=Soil_CO2_S3_5
+Alias Soil_CO2(8)=Soil_CO2_S3_10
+Alias Soil_CO2(9)=Soil_CO2_S3_30
+Alias Soil_CO2(10)=Soil_CO2_Surface
+
+
+Public SWC(20)
+Alias SWC (1) = SWC_O1_2p5
+Alias SWC (2) = SWC_O1_12p5
+Alias SWC (3) = SWC_O1_22p5
+Alias SWC (4) = SWC_O1_37p5
+Alias SWC (5) = SWC_O1_52p5
+Alias SWC (6) = SWC_S1_2p5
+Alias SWC (7) = SWC_S1_12p5
+Alias SWC (8) = SWC_S1_22p5
+Alias SWC (9) = SWC_S1_37p5
+Alias SWC (10) = SWC_S1_52p5
+Alias SWC (11) = SWC_O2_2p5
+Alias SWC (12) = SWC_O2_12p5
+Alias SWC (13) = SWC_O2_22p5
+Alias SWC (14) = SWC_O2_37p5
+Alias SWC (15) = SWC_O2_52p5
+Alias SWC (16) = SWC_S2_2p5
+Alias SWC (17) = SWC_S2_12p5
+Alias SWC (18) = SWC_S2_22p5
+Alias SWC (19) = SWC_S2_37p5
+Alias SWC (20) = SWC_S2_52p5
+
+
+Public SoilT(20)
+Alias SoilT (1) = SoilT_O1_2p5
+Alias SoilT (2) = SoilT_O1_12p5
+Alias SoilT (3) = SoilT_O1_22p5
+Alias SoilT (4) = SoilT_O1_37p5
+Alias SoilT (5) = SoilT_O1_52p5
+Alias SoilT (6) = SoilT_S1_2p5
+Alias SoilT (7) = SoilT_S1_12p5
+Alias SoilT (8) = SoilT_S1_22p5
+Alias SoilT (9) = SoilT_S1_37p5
+Alias SoilT (10) = SoilT_S1_52p5
+Alias SoilT (11) = SoilT_O2_2p5
+Alias SoilT (12) = SoilT_O2_12p5
+Alias SoilT (13) = SoilT_O2_22p5
+Alias SoilT (14) = SoilT_O2_37p5
+Alias SoilT (15) = SoilT_O2_52p5
+Alias SoilT (16) = SoilT_S2_2p5
+Alias SoilT (17) = SoilT_S2_12p5
+Alias SoilT (18) = SoilT_S2_22p5
+Alias SoilT (19) = SoilT_S2_37p5
+Alias SoilT (20) = SoilT_S2_52p5
+
+Units SoilT = C
+
+'Declare number of MPS sensors
+Dim MPSnum = 12 ' Number of MPS6 sensors
+Dim mps6index ' Counter index for MPS6 sensors
+
+Dim MPS6(12,2)
+
+Public MPS6_Temp(12)
+Alias MPS6_Temp (1) = MPS6_S1_15_T
+Alias MPS6_Temp (2) = MPS6_S1_22p5_T
+Alias MPS6_Temp (3) = MPS6_S1_37p5_T
+Alias MPS6_Temp (4) = MPS6_S2_15_T
+Alias MPS6_Temp (5) = MPS6_S2_22p5_T
+Alias MPS6_Temp (6) = MPS6_S2_37p5_T
+Alias MPS6_Temp (7) = MPS6_S3_15_T
+Alias MPS6_Temp (8) = MPS6_S3_22p5_T
+Alias MPS6_Temp (9) = MPS6_S3_37p5_T
+Alias MPS6_Temp (10) = MPS6_O3_15_T
+Alias MPS6_Temp (11) = MPS6_O3_22p5_T
+Alias MPS6_Temp (12) = MPS6_O3_37p5_T
+
+Units MPS6_Temp = C
+
+Public MPS6_Press(12)
+Alias MPS6_Press (1) = MPS6_S1_15_P
+Alias MPS6_Press (2) = MPS6_S1_22p5_P
+Alias MPS6_Press (3) = MPS6_S1_37p5_P
+Alias MPS6_Press (4) = MPS6_S2_15_P
+Alias MPS6_Press (5) = MPS6_S2_22p5_P
+Alias MPS6_Press (6) = MPS6_S2_37p5_P
+Alias MPS6_Press (7) = MPS6_S3_15_P
+Alias MPS6_Press (8) = MPS6_S3_22p5_P
+Alias MPS6_Press (9) = MPS6_S3_37p5_P
+Alias MPS6_Press (10) = MPS6_O3_15_P
+Alias MPS6_Press (11) = MPS6_O3_22p5_P
+Alias MPS6_Press (12) = MPS6_O3_37p5_P
+
+Units MPS6_Press = kPa
+
+Public mux_ref_temp
+Units mux_ref_temp = C
+
+Public TCAV
+Units TCAV=C
+
+
+
+
+
+
+
+
+'Define Data Tables.
+DataTable (soil_data,TRUE,-1) 'Set table size to # of records, or -1 to autoallocate.
+  
+  DataInterval (0,2,Min,10)
+  CardOut (0,-1)
+	Average (20,SWC(1),IEEE4,dsbl_flg_on_mux)
+  Average (20,SoilT(1),IEEE4,AM25T_dsble_flg_on_mux)
+  Average (10,Soil_CO2(1),IEEE4,dsbl_flg_on_mux)
+  'changed from 2 to 4 on 5/25/2011
+  Average (4,shf(1),IEEE4,dsbl_flg_on_mux)  'Hukesflux plates 2/20/09
+  Average (1,TCAV,IEEE4,dsbl_flg_on_mux)   'sensors installed by Eric prior to burn, installed new ones 5/2011
+  'think the order of grass/open switched between prior to burn and 5/2011       open/grass  5/2011
+  Average (12,MPS6_Temp(1),IEEE4,dsbl_flg_on_mux)
+  Average (12,MPS6_Press(1),IEEE4,dsbl_flg_on_mux)
+
+EndTable
+
+
+
+'Main Program
+BeginProg
+
+
+	Scan (1,Min,3,0) 
+	  
+  PanelTemp (panelT_1000,250)
+  
+
+   AM25T (SoilT(1),20,mV25C,1,1,TypeT,mux_ref_temp,7,8 ,Vx1,True,200,250,1.0,0)
+  
+
+
+
+    mps6index=1
+    PortSet (2,TRUE)
+    
+    ii=1
+    SubScan (0,mSec,4)
+      PulsePort (1,10000)
+      ' Measure heatflux plates 1-4
+      VoltDiff (shf(ii),1,mV250C,2,True ,200,250,shf_cal(ii),0)
+      ii=ii+1
+      ' Measure MPS6 sensors 1-4
+      PortSet(9,1)
+      'Below is only way to get long enough delay in needed between each probe (told by Jacob at CSI)
+		   Delay (0,20,mSec)
+		   Delay (0,20,mSec)
+		   Delay (0,20,mSec)
+		   Delay (0,20,mSec)
+       Delay (0,20,mSec)
+       Delay (0,20,mSec)
+		   Delay (0,20,mSec)
+		   Delay (0,20,mSec)
+		   Delay (0,20,mSec)
+       Delay (0,20,mSec)
+
+
+      'collect all data from MPS6 probes on the AM16/32 Multiplexer
+      'Move(MPS6(),2,NaN,1)
+			SDI12Recorder (MPS6(mps6index,1),3,0,"M!",1.0,0)
+			'MPS6_Press(mps6index) = MPS6(1)
+			'MPS6_Temp(mps6index) = MPS6(2)
+			mps6index=mps6index+1
+			'Turn off SW-12
+			PortSet(9,0)
+
+		NextSubScan
+      
+   
+    ii=1
+    SubScan (0,mSec,8)
+      PulsePort (1,10000)
+      ' Measure SoilCo2 1-10
+      VoltDiff (Soil_CO2(ii),1,mV2500,2,True ,200,250,10,0)
+      ii=ii+1
+      ' Measure MPS6 sensors 5-12
+      PortSet(9,1)
+      'Below is only way to get long enough delay in needed between each probe (told by Jacob at CSI)
+      Delay (0,20,mSec)
+		  Delay (0,20,mSec)
+		  Delay (0,20,mSec)
+		  Delay (0,20,mSec)
+		  Delay (0,20,mSec)
+		  Delay (0,20,mSec)
+      Delay (0,20,mSec)
+      Delay (0,20,mSec)
+      Delay (0,20,mSec)
+      Delay (0,20,mSec)
+
+      'collect all data from MPS6 probes on the AM16/32 Multiplexer
+	    'Move(MPS6(),2,NaN,1)
+	    
+			SDI12Recorder (MPS6(mps6index,1),3,0,"M!",1.0,0)
+			'MPS6_Press(mps6index) = MPS6(1)
+			'MPS6_Temp(mps6index) = MPS6(1)
+			mps6index=mps6index+1
+			'Turn off SW-12
+			PortSet(9,0)
+    NextSubScan
+    
+    For j = 1 To MPSnum
+			  'VWC(j) = 4.3E-6 * MPS6(j,1)^3 - 5.5E-4 * MPS6(j,1)^2 + 2.92E-2 * MPS6(j,1) - 5.3E-2
+			  MPS6_Press(j) = MPS6(j,1)
+			  MPS6_Temp(j) = MPS6(j,2)
+		Next j
+		 
+    SubScan (0,mSec,2)
+      PulsePort (1,10000)
+      ' Measure SoilCo2 9-10
+       VoltDiff (Soil_CO2(ii),1,mV2500,2,True ,200,250,10,0)
+      ii=ii+1
+    NextSubScan
+
+    PulsePort (1, 10000)
+ 
+    TCDiff (TCAV,1,mV25C,2,TypeE,panelT_1000,True ,200,250,1.0,0)
+    
+    PortSet (2,FALSE)
+
+
+
+
+    PortSet (5,TRUE) 'Turn on soil moisture AM16/32.
+    iii=1
+    SubScan (0,msec,10)
+      PulsePort (4,10000)
+      
+      CS616 (SWC(iii),1,5,6,1,1.0,0)
+      CS616 (SWC(iii+1),1,6,6,1,1.0,0)
+      iii=iii+2
+    NextSubScan
+    
+   
+    PortSet (4,FALSE) 'Turn off soil moisture AM16/32.
+
+		CallTable soil_data
+
+  NextScan
+
+
+	
+EndProg
+
