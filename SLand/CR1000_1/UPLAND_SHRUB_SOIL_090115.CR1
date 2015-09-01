@@ -174,7 +174,7 @@ Units TCAV=C
 'Define Data Tables.
 DataTable (soil_data,TRUE,-1) 'Set table size to # of records, or -1 to autoallocate.
   
-  DataInterval (0,2,Min,10)
+  DataInterval (0,30,Min,10)
   CardOut (0,-1)
 	Average (20,SWC(1),IEEE4,dsbl_flg_on_mux)
   Average (20,SoilT(1),IEEE4,AM25T_dsble_flg_on_mux)
@@ -194,14 +194,12 @@ EndTable
 BeginProg
 
 
-	Scan (1,Min,3,0) 
+	Scan (15,Min,3,0) 
 	  
   PanelTemp (panelT_1000,250)
   
 
    AM25T (SoilT(1),20,mV25C,1,1,TypeT,mux_ref_temp,7,8 ,Vx1,True,200,250,1.0,0)
-  
-
 
 
     mps6index=1
