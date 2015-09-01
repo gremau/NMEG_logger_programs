@@ -51,5 +51,10 @@ doc*
 .Trashes
 ehthumbs.db
 Thumbs.db
-SLand/UPLAND_SHRUB_testing_MPS_7200.tdf
+
+# Nonessential cambell datalogger files
+#######################################
 *.tdf
+*.dld
+*.fsl
+*.pti
