@@ -1,0 +1,2353 @@
+;{CR23X}
+;----------------------------------------------------------
+;Date: 5-9-12
+;Old Program: Cr23x _girdled_050710.csi
+;New Program: Cr23x _girdled_050912.csi
+;Comments: Add code (P20) to Set Control Ports C1,C2,C3 as
+;  inputs at end of Table_1 (i.e. high impedance)
+; Set Port(s) (P20)
+; 1:9999 C8..C5 = nc/nc/nc/nc
+; 2:9888 C4..C1 = nc/input/input/input
+;
+;----------------------------------------------------------
+;
+;port 6 for TDR100 relay
+;port 4 is mux 1 reset
+;port 5 is mux 1 clock
+
+;port 2 is for heat flux relay
+;port 7 is for mux 2 reset
+;port 8 is for mux 2 clock
+
+
+
+*Table 1 Program
+  01: 10        Execution Interval (seconds)
+
+1:  Batt Voltage (P10)
+ 1: 55       Loc [ Bat_Volt  ]
+
+
+2:  Panel Temperature (P17)
+ 1: 202      Loc [ ref_temp  ]
+
+
+;measure TDR probes
+
+3:  If time is (P92)
+ 1: 0        Minutes (Seconds --) into a
+ 2: 5        Interval (same units as above)
+ 3: 30       Then Do
+
+;Measure TDR probes
+;
+     4:  Do (P86)
+      1: 49       Turn On Switched 12V
+
+     5:  Delay w/Opt Excitation (P22)
+      1: 2        Ex Channel
+      2: 300      Delay W/Ex (0.01 sec units)
+      3: 0        Delay After Ex (0.01 sec units)
+      4: 0        mV Excitation
+
+     6:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 0        La/L for Water Content
+      3: 1006     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 22       Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: .3       Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 1        Loc [ LaLP1_5   ]
+     12: 1.0      Multiplier
+     13: 0        Offset
+
+     7:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 0        La/L for Water Content
+      3: 7108     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 23       Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: 0.3      Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 7        Loc [ LaLP3_5   ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     8:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 0        La/L for Water Content
+      3: 8107     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 22.5     Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: .3       Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 15       Loc [ LaLJ2_30  ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     9:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 0        La/L for Water Content
+      3: 8816     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 24       Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: .3       Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 22       Loc [ LaLO2_5   ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     10:  Do (P86)
+      1: 59       Turn Off Switched 12V
+
+
+;Process TDR data collected above
+;
+     11:  Beginning of Loop (P87)
+      1: 0        Delay
+      2: 27       Loop Count
+
+          12:  Z=X*Y (P36)
+           1: 1     -- X Loc [ LaLP1_5   ]
+           2: 1     -- Y Loc [ LaLP1_5   ]
+           3: 28    -- Z Loc [ WC_P1_5   ]
+
+          13:  Z=X*F (P37)
+           1: 28    -- X Loc [ WC_P1_5   ]
+           2: .1       F
+           3: 28    -- Z Loc [ WC_P1_5   ]
+
+          14:  Polynomial (P55)
+           1: 1        Reps
+           2: 28    -- X Loc [ WC_P1_5   ]
+           3: 28    -- F(X) Loc [ WC_P1_5   ]
+           4: -0.053   C0
+           5: .292     C1
+           6: -0.055   C2
+           7: 0.0043   C3
+           8: 0.0      C4
+           9: 0.0      C5
+
+     15:  End (P95)
+
+16:  End (P95)
+
+;set flag 1 high to call TDR waveform subroutine
+;to set flag 1 high, key in *6AD1
+
+17:  If Flag/Port (P91)
+ 1: 11       Do if Flag 1 is High
+ 2: 1        Call Subroutine 1
+
+;Turn on Mux 2.
+;
+18:  Do (P86)
+ 1: 47       Set Port 7 High
+
+;Measure sap flow probes on a 16/32 mux set in 2x32 mode.
+;
+19:  Beginning of Loop (P87)
+ 1: 0        Delay
+ 2: 10       Loop Count
+
+     20:  Step Loop Index (P90)
+      1: 1        Step
+
+     21:  Do (P86)
+      1: 78       Pulse Port 8
+
+     22:  Volt (Diff) (P2)
+      1: 1        Reps
+      2: 21       10 mV, 60 Hz Reject, Slow Range
+      3: 3        DIFF Channel
+      4: 193   -- Loc [ sap_sp1a  ]
+      5: 1.0      Multiplier
+      6: 0.0      Offset
+
+23:  End (P95)
+
+
+24:  Beginning of Loop (P87)
+ 1: 0        Delay
+ 2: 10       Loop Count
+
+
+
+     25:  Step Loop Index (P90)
+      1: 1        Step
+
+     26:  Do (P86)
+      1: 78       Pulse Port 8
+
+     27:  Volt (Diff) (P2)
+      1: 1        Reps
+      2: 21       10 mV, 60 Hz Reject, Slow Range
+      3: 3        DIFF Channel
+      4: 166   -- Loc [ sap_J1a   ]
+      5: 1.0      Multiplier
+      6: 0.0      Offset
+
+28:  End (P95)
+
+
+
+
+
+;Measure CO2 probes.
+;
+29:  Beginning of Loop (P87)
+ 1: 0        Delay
+ 2: 11       Loop Count
+
+     30:  Step Loop Index (P90)
+      1: 1        Step
+
+     31:  Do (P86)
+      1: 78       Pulse Port 8
+
+     32:  Volt (Diff) (P2)
+      1: 1        Reps
+      2: 25       5000 mV, 60 Hz Reject, Fast Range (same as code 45)
+      3: 3        DIFF Channel
+      4: 177   -- Loc [ SCO2_P15  ]
+      5: 1.0      Multiplier
+      6: 0.0      Offset
+
+33:  End (P95)
+
+
+
+34:  Do (P86)
+ 1: 57       Set Port 7 Low
+
+
+
+35:  Volt (Diff) (P2)
+ 1: 3        Reps
+ 2: 25       5000 mV, 60 Hz Reject, Fast Range (same as code 45)
+ 3: 4        DIFF Channel
+ 4: 188   -- Loc [ SCO2_J25  ]
+ 5: 1.0      Multiplier
+ 6: 0.0      Offset
+
+
+
+
+;Measure 107 probes on Mux 1 - 27 probes and 9 heat flux plates
+;(2 SE measurements each).
+
+36:  Do (P86)
+ 1: 44       Set Port 4 High
+
+37:  Beginning of Loop (P87)
+ 1: 0        Delay
+ 2: 9        Loop Count
+
+     38:  Step Loop Index (P90)
+      1: 3        Step
+
+     39:  Do (P86)
+      1: 75       Pulse Port 5
+
+;     35:  Temp (107) (P11)
+;      1: 3        Reps
+;      2: 1        SE Channel
+;      3: 21       Excite all reps w/E1, 60Hz, 10ms delay
+;      4: 56    -- Loc [ T_P1_5    ]
+;      5: 1.0      Multiplier
+;      6: 0.0      Offset
+
+     40:  AC Half Bridge (P5)
+      1: 3        Reps
+      2: 20       Auto, 60 Hz Reject, Slow Range (OS>1.06)
+      3: 1        SE Channel
+      4: 1        Excite all reps w/Exchan 1
+      5: 4000     mV Excitation
+      6: 56    -- Loc [ T_P1_5    ]
+      7: 800      Multiplier
+      8: 0        Offset
+
+     41:  Polynomial (P55)
+      1: 3        Reps
+      2: 56    -- X Loc [ T_P1_5    ]
+      3: 56    -- F(X) Loc [ T_P1_5    ]
+      4: -53.46   C0
+      5: 90.807   C1
+      6: -83.257  C2
+      7: 52.283   C3
+      8: -16.723  C4
+      9: 2.211    C5
+
+42:  End (P95)
+
+
+
+43:  Beginning of Loop (P87)
+ 1: 0        Delay
+ 2: 3        Loop Count
+
+     44:  Step Loop Index (P90)
+      1: 3        Step
+
+     45:  Do (P86)
+      1: 75       Pulse Port 5
+
+;Measure heat flux plates.
+;
+     46:  Volt (SE) (P1)
+      1: 3        Reps
+      2: 20       Auto, 60 Hz Reject, Slow Range (OS>1.06)
+      3: 1        SE Channel
+      4: 83    -- Loc [ shfmV_P1  ]
+      5: 1.0      Multiplier
+      6: 0.0      Offset
+
+47:  End (P95)
+
+
+;Measure voltage across current shunt resistor each scan.
+;This measurement is used to compute power.
+;
+48:  Beginning of Loop (P87)
+ 1: 0        Delay
+ 2: 3        Loop Count
+
+     49:  Step Loop Index (P90)
+      1: 3        Step
+
+     50:  Do (P86)
+      1: 75       Pulse Port 5
+
+     51:  Volt (SE) (P1)
+      1: 3        Reps
+      2: 25       5000 mV, 60 Hz Reject, Fast Range (same as code 45)
+      3: 1        SE Channel
+      4: 92    -- Loc [ V_Rf_P1   ]
+      5: .001     Multiplier
+      6: 0.0      Offset
+
+52:  End (P95)
+
+
+
+53:  Do (P86)
+ 1: 54       Set Port 4 Low
+
+
+;Load in the factory calibration.
+;
+54:  If (X<=>F) (P89)
+ 1: 101      X Loc [ hfp_cal_1 ]
+ 2: 4        <
+ 3: 5        F
+ 4: 30       Then Do
+
+;Load factory calibration, in W/(m^2 mV) = 1000/sensitivity
+;
+     55:  Z=F x 10^n (P30)
+      1: 16.13    F
+      2: 0        n, Exponent of 10
+      3: 101      Z Loc [ hfp_cal_1 ]
+
+     56:  Z=F x 10^n (P30)
+      1: 14.88    F
+      2: 0        n, Exponent of 10
+      3: 102      Z Loc [ hfp_cal_2 ]
+
+     57:  Z=F x 10^n (P30)
+      1: 15.79    F
+      2: 0        n, Exponent of 10
+      3: 103      Z Loc [ hfp_cal_3 ]
+
+     58:  Z=F x 10^n (P30)
+      1: 15.53    F
+      2: 0        n, Exponent of 10
+      3: 104      Z Loc [ hfp_cal_4 ]
+
+     59:  Z=F x 10^n (P30)
+      1: 14.97    F
+      2: 0        n, Exponent of 10
+      3: 105      Z Loc [ hfp_cal_5 ]
+
+     60:  Z=F x 10^n (P30)
+      1: 15.79    F
+      2: 0        n, Exponent of 10
+      3: 106      Z Loc [ hfp_cal_6 ]
+
+     61:  Z=F x 10^n (P30)
+      1: 15.36    F
+      2: 00       n, Exponent of 10
+      3: 107      Z Loc [ hfp_cal_7 ]
+
+     62:  Z=F x 10^n (P30)
+      1: 15.17    F
+      2: 00       n, Exponent of 10
+      3: 108      Z Loc [ hfp_cal_8 ]
+
+     63:  Z=F x 10^n (P30)
+      1: 15.89    F
+      2: 00       n, Exponent of 10
+      3: 109      Z Loc [ hfp_cal_9 ]
+
+
+;Load CAO values.
+;
+     64:  Z=F x 10^n (P30)
+      1: 0        F
+      2: 0        n, Exponent of 10
+      3: 192      Z Loc [ ca01off   ]
+
+     65:  Z=F x 10^n (P30)
+      1: 5000     F
+      2: 0        n, Exponent of 10
+      3: 191      Z Loc [ ca01on    ]
+
+66:  End (P95)
+
+
+
+
+67:  Beginning of Loop (P87)
+ 1: 0        Delay
+ 2: 9        Loop Count
+
+;Apply custom calibration to raw soil heat flux measurement.
+;
+     68:  Z=X*Y (P36)
+      1: 83    -- X Loc [ shfmV_P1  ]
+      2: 101   -- Y Loc [ hfp_cal_1 ]
+      3: 110   -- Z Loc [ shf_P1    ]
+
+69:  End (P95)
+
+
+
+;Output data
+
+70:  If time is (P92)
+ 1: 0        Minutes (Seconds --) into a
+ 2: 30       Interval (same units as above)
+ 3: 10       Set Output Flag High (Flag 0)
+
+71:  Set Active Storage Area (P80)^1780
+ 1: 1        Final Storage Area 1
+ 2: 100      Array ID
+
+72:  Real Time (P77)^26652
+ 1: 1220     Year,Day,Hour/Minute (midnight = 2400) ;
+
+73:  Resolution (P78)
+ 1: 1        High Resolution
+
+74:  Average (P71)^23083
+ 1: 27       Reps
+ 2: 56       Loc [ T_P1_5    ]
+
+75:  Average (P71)^21289
+ 1: 27       Reps
+ 2: 28       Loc [ WC_P1_5   ]
+
+;Do not include the calibration data in the soil heat flux output.
+;
+76:  If Flag/Port (P91)
+ 1: 18       Do if Flag 8 is High
+ 2: 19       Set Intermed. Proc. Disable Flag High (Flag 9)
+
+77:  Average (P71)^31895
+ 1: 9        Reps
+ 2: 110      Loc [ shf_P1    ]
+
+78:  Do (P86)
+ 1: 29       Set Intermed. Proc. Disable Flag Low (Flag 9)
+
+79:  Sample (P70)^18764
+ 1: 9        Reps
+ 2: 101      Loc [ hfp_cal_1 ]
+
+80:  Average (P71)^22617
+ 1: 20       Reps
+ 2: 156      Loc [ sap_P1a   ]
+
+81:  Average (P71)^7210
+ 1: 8        Reps
+ 2: 177      Loc [ SCO2_P15  ]
+
+82:  Average (P71)^16519
+ 1: 9        Reps
+ 2: 193      Loc [ sap_sp1a  ]
+
+83:  Average (P71)^32118
+ 1: 1        Reps
+ 2: 176      Loc [ sap_sp5b  ]
+
+84:  Average (P71)^8052
+ 1: 1        Reps
+ 2: 202      Loc [ ref_temp  ]
+
+85:  Standard Deviation (P82)^18588
+ 1: 9        Reps
+ 2: 56       Sample Loc [ T_P1_5    ]
+
+;Do not include the calibration data in the soil heat flux output.
+;
+86:  If Flag/Port (P91)
+ 1: 18       Do if Flag 8 is High
+ 2: 19       Set Intermed. Proc. Disable Flag High (Flag 9)
+
+87:  Standard Deviation (P82)^2562
+ 1: 9        Reps
+ 2: 110      Sample Loc [ shf_P1    ]
+
+
+88:  Standard Deviation (P82)^7240
+ 1: 9        Reps
+ 2: 83       Sample Loc [ shfmV_P1  ]
+
+89:  Do (P86)
+ 1: 29       Set Intermed. Proc. Disable Flag Low (Flag 9)
+
+90:  Standard Deviation (P82)^16379
+ 1: 1        Reps
+ 2: 202      Sample Loc [ ref_temp  ]
+
+91:  Average (P71)^27173
+ 1: 9        Reps
+ 2: 83       Loc [ shfmV_P1  ]
+
+
+92:  Average (P71)^756
+ 1: 6        Reps
+ 2: 185      Loc [ SCO2_J15  ]
+
+
+
+
+93:  If time is (P92)
+ 1: 0        Minutes (Seconds --) into a
+ 2: 5        Interval (same units as above)
+ 3: 10       Set Output Flag High (Flag 0)
+
+94:  Set Active Storage Area (P80)^13917
+ 1: 2        Final Storage Area 2
+ 2: 200      Array ID
+
+95:  Real Time (P77)^2211
+ 1: 0111     Day,Hour/Minute,Seconds (midnight = 0000)
+
+96:  Resolution (P78)
+ 1: 1        High Resolution
+
+;Do not include the calibration data in the soil heat flux output.
+;
+97:  If Flag/Port (P91)
+ 1: 18       Do if Flag 8 is High
+ 2: 19       Set Intermed. Proc. Disable Flag High (Flag 9)
+
+98:  Average (P71)^15785
+ 1: 1        Reps
+ 2: 91       Loc [ shfmV_O3  ]
+
+99:  Standard Deviation (P82)^31731
+ 1: 1        Reps
+ 2: 91       Sample Loc [ shfmV_O3  ]
+
+100:  Maximum (P73)^256
+ 1: 1        Reps
+ 2: 0        Value Only
+ 3: 91       Loc [ shfmV_O3  ]
+
+101:  Minimum (P74)^18776
+ 1: 1        Reps
+ 2: 0        Value Only
+ 3: 91       Loc [ shfmV_O3  ]
+
+102:  Do (P86)
+ 1: 29       Set Intermed. Proc. Disable Flag Low (Flag 9)
+
+
+
+;Call soil heat flux plate calibration routine.
+;
+103:  Do (P86)
+ 1: 8        Call Subroutine 8
+
+;May 9, 2012: Add code to Set Control Ports C1,C2,C3 as
+;  inputs at end of Table_1 (i.e. high impedance)
+104:  Set Port(s) (P20)
+ 1: 9999     C8..C5 = nc/nc/nc/nc
+ 2: 9888     C4..C1 = nc/input/input/input
+
+
+*Table 2 Program
+  02: 0.0000    Execution Interval (seconds)
+
+
+*Table 3 Subroutines
+
+;Calibration routine.
+;
+1:  Beginning of Subroutine (P85)
+ 1: 8        Subroutine 8
+
+;Perform in-situ calibration.
+;
+     2:  If time is (P92)
+      1: 1        Minutes (Seconds --) into a
+      2: 1440     Interval (same units as above)
+      3: 30       Then Do
+
+;     3:  If time is (P92)
+;      1: 1        Minutes (Seconds --) into a
+;      2: 120      Interval (same units as above)
+;      3: 30       Then Do
+
+;Save the time = 0 second output from the soil heat flux plates.
+;
+          3:  Beginning of Loop (P87)
+           1: 0        Delay
+           2: 9        Loop Count
+
+               4:  Z=X (P31)
+                1: 83    -- X Loc [ shfmV_P1  ]
+                2: 119   -- Z Loc [ mV_1_0    ]
+
+          5:  End (P95)
+
+;Begin heating for calibration.
+;
+          6:  Analog Out (P133)
+           1: 1        CAO1
+           2: 191      mV Loc [ ca01on    ]
+
+;Used to filter data during and after calibration.
+;
+          7:  Do (P86)
+           1: 18       Set Flag 8 High
+
+     8:  End (P95)
+
+
+;End site calibration three minutes after calibration started.
+;
+     9:  If time is (P92)
+      1: 4        Minutes (Seconds --) into a
+      2: 1440     Interval (same units as above)
+      3: 30       Then Do
+
+;     10:  If time is (P92)
+;      1: 4        Minutes (Seconds --) into a
+;      2: 120      Interval (same units as above)
+;      3: 30       Then Do
+
+
+;Measurement across Rf done each scan in Table 1.
+
+
+          10:  Beginning of Loop (P87)
+           1: 0        Delay
+           2: 9        Loop Count
+
+               11:  Z=X (P31)
+                1: 92    -- X Loc [ V_Rf_P1   ]
+                2: 137   -- Z Loc [ V_1_Rf    ]
+
+               12:  Z=X (P31)
+                1: 83    -- X Loc [ shfmV_P1  ]
+                2: 128   -- Z Loc [ mV_1_180  ]
+
+          13:  End (P95)
+
+;Turn off the soil heat flux plate heaters.
+;
+          14:  Analog Out (P133)
+           1: 1        CAO1
+           2: 192      mV Loc [ ca01off   ]
+
+     15:  End (P95)
+
+
+
+;Compute in-situ calibration.
+;
+     16:  If time is (P92)
+      1: 29       Minutes (Seconds --) into a
+      2: 1440     Interval (same units as above)
+      3: 30       Then Do
+
+;     16:  If time is (P92)
+;      1: 29       Minutes (Seconds --) into a
+;      2: 120      Interval (same units as above)
+;      3: 30       Then Do
+
+          17:  Do (P86)
+           1: 28       Set Flag 8 Low
+
+          18:  Beginning of Loop (P87)
+           1: 0        Delay
+           2: 9        Loop Count
+
+               19:  Z=X (P31)
+                1: 83    -- X Loc [ shfmV_P1  ]
+                2: 146   -- Z Loc [ mV_end_1  ]
+
+               20:  Z=X*Y (P36)
+                1: 137   -- X Loc [ V_1_Rf    ]
+                2: 137   -- Y Loc [ V_1_Rf    ]
+                3: 101   -- Z Loc [ hfp_cal_1 ]
+
+               21:  Z=X*F (P37)
+                1: 101   -- X Loc [ hfp_cal_1 ]
+                2: 128.7    F
+                3: 101   -- Z Loc [ hfp_cal_1 ]
+
+               22:  Z=X+Y (P33)
+                1: 119   -- X Loc [ mV_1_0    ]
+                2: 146   -- Y Loc [ mV_end_1  ]
+                3: 155      Z Loc [ work      ]
+
+               23:  Z=X*F (P37)
+                1: 155      X Loc [ work      ]
+                2: .5       F
+                3: 155      Z Loc [ work      ]
+
+               24:  Z=X-Y (P35)
+                1: 155      X Loc [ work      ]
+                2: 128   -- Y Loc [ mV_1_180  ]
+                3: 155      Z Loc [ work      ]
+
+               25:  Z=ABS(X) (P43)
+                1: 155      X Loc [ work      ]
+                2: 155      Z Loc [ work      ]
+
+               26:  Z=X/Y (P38)
+                1: 101   -- X Loc [ hfp_cal_1 ]
+                2: 155      Y Loc [ work      ]
+                3: 101   -- Z Loc [ hfp_cal_1 ]
+
+          27:  End (P95)
+
+     28:  End (P95)
+
+
+29:  End (P95)
+
+;subroutine to collect TDR waveform data
+
+30:  Beginning of Subroutine (P85)
+ 1: 1        Subroutine 1
+
+;Measure TDR probes
+;
+     31:  Do (P86)
+      1: 49       Turn On Switched 12V
+
+     32:  Delay w/Opt Excitation (P22)
+      1: 2        Ex Channel
+      2: 300      Delay W/Ex (0.01 sec units)
+      3: 0        Delay After Ex (0.01 sec units)
+      4: 0        mV Excitation
+
+     33:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 1001     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 22       Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: .3       Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0        Offset
+
+     34:  Z=F x 10^n (P30)
+      1: 1001     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     35:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     36:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 2001     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 22       Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: .3       Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0        Offset
+
+     37:  Z=F x 10^n (P30)
+      1: 2001     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     38:  Do (P86)
+      1: 2        Call Subroutine 2
+
+
+     39:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 3001     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 22       Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: .3       Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0        Offset
+
+     40:  Z=F x 10^n (P30)
+      1: 3001     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     41:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     42:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 4001     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 22       Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: .3       Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0        Offset
+
+
+     43:  Z=F x 10^n (P30)
+      1: 4001     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     44:  Do (P86)
+      1: 2        Call Subroutine 2
+
+
+     45:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 5001     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 22       Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: .3       Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0        Offset
+
+
+     46:  Z=F x 10^n (P30)
+      1: 5001     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     47:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     48:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 6001     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 22       Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: .3       Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0        Offset
+
+     49:  Z=F x 10^n (P30)
+      1: 6001     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     50:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     51:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 7101     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 23       Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: 0.3      Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     52:  Z=F x 10^n (P30)
+      1: 7101     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     53:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     54:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 7201     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 23       Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: 0.3      Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     55:  Z=F x 10^n (P30)
+      1: 7201     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     56:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     57:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 7301     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 23       Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: 0.3      Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     58:  Z=F x 10^n (P30)
+      1: 7301     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     59:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     60:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 7401     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 23       Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: 0.3      Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     61:  Z=F x 10^n (P30)
+      1: 7401     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     62:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     63:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 7501     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 23       Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: 0.3      Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     64:  Z=F x 10^n (P30)
+      1: 7501     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     65:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     66:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 7601     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 23       Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: 0.3      Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     67:  Z=F x 10^n (P30)
+      1: 7601     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     68:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     69:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 7701     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 23       Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: 0.3      Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     70:  Z=F x 10^n (P30)
+      1: 7701     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     71:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     72:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 7801     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 23       Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: 0.3      Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     73:  Z=F x 10^n (P30)
+      1: 7801     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     74:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     75:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 8101     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 22.5     Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: .3       Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     76:  Z=F x 10^n (P30)
+      1: 8101     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     77:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     78:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 8201     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 22.5     Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: .3       Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     79:  Z=F x 10^n (P30)
+      1: 8201     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     80:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     81:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 8301     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 22.5     Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: .3       Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     82:  Z=F x 10^n (P30)
+      1: 8301     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     83:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     84:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 8401     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 22.5     Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: .3       Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     85:  Z=F x 10^n (P30)
+      1: 8401     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     86:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     87:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 8501     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 22.5     Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: .3       Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     88:  Z=F x 10^n (P30)
+      1: 8501     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     89:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     90:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 8601     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 22.5     Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: .3       Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     91:  Z=F x 10^n (P30)
+      1: 8601     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     92:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     93:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 8701     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 22.5     Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: .3       Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     94:  Z=F x 10^n (P30)
+      1: 8701     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     95:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     96:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 8811     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 24       Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: .3       Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     97:  Z=F x 10^n (P30)
+      1: 8811     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     98:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     99:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 8821     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 24       Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: .3       Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     100:  Z=F x 10^n (P30)
+      1: 8821     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     101:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     102:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 8831     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 24       Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: .3       Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     103:  Z=F x 10^n (P30)
+      1: 8831     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     104:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     105:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 8841     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 24       Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: .3       Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     106:  Z=F x 10^n (P30)
+      1: 8841     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     107:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     108:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 8851     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 24       Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: .3       Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     109:  Z=F x 10^n (P30)
+      1: 8851     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     110:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     111:  TDR100 Measurement (P119)
+      1: 00       SDM Address
+      2: 1        Waveform
+      3: 8861     MMMP Mux & Probe Selection
+      4: 4        Waveform Averaging
+      5: 1        Vp
+      6: 251      Points
+      7: 24       Cable Length (meters)
+      8: 4        Window Length (meters)
+      9: .3       Probe Length (meters)
+     10: .085     Probe Offset (meters)
+     11: 204      Loc [ Wave_1    ]
+     12: 1.0      Multiplier
+     13: 0.0      Offset
+
+     112:  Z=F x 10^n (P30)
+      1: 8861     F
+      2: 0        n, Exponent of 10
+      3: 203      Z Loc [ TDR_prb   ]
+
+     113:  Do (P86)
+      1: 2        Call Subroutine 2
+
+     114:  Do (P86)
+      1: 59       Turn Off Switched 12V
+
+     115:  Do (P86)
+      1: 21       Set Flag 1 Low
+
+116:  End (P95)
+
+;subroutine to save waveform data
+
+117:  Beginning of Subroutine (P85)
+ 1: 2        Subroutine 2
+
+     118:  Do (P86)
+      1: 10       Set Output Flag High (Flag 0)
+
+     119:  Set Active Storage Area (P80)^28749
+      1: 1        Final Storage Area 1
+      2: 251      Array ID
+
+     120:  Real Time (P77)^19354
+      1: 1220     Year,Day,Hour/Minute (midnight = 2400)
+
+     121:  Resolution (P78)
+      1: 1        High Resolution
+
+     122:  Sample (P70)^32220
+      1: 1        Reps
+      2: 203      Loc [ TDR_prb   ]
+
+     123:  Resolution (P78)
+      1: 0        Low Resolution
+
+     124:  Sample (P70)^18130
+      1: 260      Reps
+      2: 204      Loc [ Wave_1    ]
+
+
+125:  End (P95)
+
+
+
+End Program
+
+
+
+
+
+
+
+
+
+-Input Locations-
+1 LaLP1_5   1 2 1
+2 LaLP1_10  0 0 0
+3 LaLP1_30  0 0 0
+4 LaLP2_5   0 0 0
+5 LaLP2_10  0 0 0
+6 LaLP2_30  0 0 0
+7 LaLP3_5   1 0 1
+8 LaLP3_10  0 0 0
+9 LaLP3_30  0 0 0
+10 LaLJ1_5   0 0 0
+11 LaLJ1_10  0 0 0
+12 LaLJ1_30  0 0 0
+13 LaLJ2_5   0 0 0
+14 LaLJ2_10  0 0 0
+15 LaLJ2_30  1 0 1
+16 LaLJ3_5   0 0 0
+17 LaLJ3_10  0 0 0
+18 LaLJ3_30  0 0 0
+19 LaLO1_5   0 0 0
+20 LaLO1_10  0 0 0
+21 LaLO1_30  0 0 0
+22 LaLO2_5   1 0 1
+23 LaLO2_10  0 0 0
+24 LaLO2_30  0 0 0
+25 LaLO3_5   0 0 0
+26 LaLO3_10  0 0 0
+27 LaLO3_30  0 0 0
+28 WC_P1_5   1 3 3
+29 WC_P1_10  1 1 0
+30 WC_P1_30  1 1 0
+31 WC_P2_5   1 1 0
+32 WC_P2_10  1 1 0
+33 WC_P2_30  1 1 0
+34 WC_P3_5   1 1 0
+35 WC_P3_10  1 1 0
+36 WC_P3_30  1 1 0
+37 WC_J1_5   1 1 0
+38 WC_J1_10  1 1 0
+39 WC_J1_30  1 1 0
+40 WC_J2_5   1 1 0
+41 WC_J2_10  1 1 0
+42 WC_J2_30  1 1 0
+43 WC_J3_5   1 1 0
+44 WC_J3_10  1 1 0
+45 WC_J3_30  1 1 0
+46 WC_O1_5   1 1 0
+47 WC_O1_10  1 1 0
+48 WC_O1_30  1 1 0
+49 WC_O2_5   1 1 0
+50 WC_O2_10  1 1 0
+51 WC_O2_30  1 1 0
+52 WC_O3_5   1 1 0
+53 WC_O3_10  1 1 0
+54 WC_O3_30  1 1 0
+55 Bat_Volt  1 0 1
+56 T_P1_5    5 3 2
+57 T_P1_10   9 2 2
+58 T_P1_30   17 2 2
+59 T_P2_5    1 1 0
+60 T_P2_10   1 1 0
+61 T_P2_30   1 1 0
+62 T_P3_5    1 1 0
+63 T_P3_10   1 1 0
+64 T_P3_30   1 1 0
+65 T_J1_5    1 1 0
+66 T_J1_10   1 1 0
+67 T_J1_30   1 1 0
+68 T_J2_5    1 1 0
+69 T_J2_10   1 1 0
+70 T_J2_30   1 1 0
+71 T_J3_5    1 1 0
+72 T_J3_10   1 1 0
+73 T_J3_30   1 1 0
+74 T_O1_5    1 1 0
+75 T_O1_10   1 1 0
+76 T_O1_30   1 1 0
+77 T_O2_5    1 1 0
+78 T_O2_10   1 1 0
+79 T_O2_30   1 1 0
+80 T_O3_5    1 1 0
+81 T_O3_10   1 1 0
+82 T_O3_30   1 1 0
+83 shfmV_P1  5 6 1
+84 shfmV_P2  9 2 1
+85 shfmV_P3  25 2 1
+86 shfmV_J1  9 2 0
+87 shfmV_J2  9 2 0
+88 shfmV_J3  9 2 0
+89 shfmV_O1  9 2 0
+90 shfmV_O2  9 2 0
+91 shfmV_O3  9 6 0
+92 V_Rf_P1   13 1 1
+93 V_Rf_P2   9 0 1
+94 V_Rf_P3   25 0 1
+95 V_Rf_J1   9 0 0
+96 V_Rf_J2   9 0 0
+97 V_Rf_J3   9 0 0
+98 V_Rf_O1   9 0 0
+99 V_Rf_O2   9 0 0
+100 V_Rf_O3   9 0 0
+101 hfp_cal_1 9 5 4
+102 hfp_cal_2 9 1 1
+103 hfp_cal_3 9 1 1
+104 hfp_cal_4 9 1 1
+105 hfp_cal_5 9 1 1
+106 hfp_cal_6 9 1 1
+107 hfp_cal_7 9 1 1
+108 hfp_cal_8 9 1 1
+109 hfp_cal_9 9 1 1
+110 shf_P1    9 2 1
+111 shf_P2    9 1 0
+112 shf_P3    9 1 0
+113 shf_J1    9 1 0
+114 shf_J2    9 1 0
+115 shf_J3    9 1 0
+116 shf_O1    9 1 0
+117 shf_O2    9 1 0
+118 shf_O3    9 1 0
+119 mV_1_0    13 1 1
+120 mV_2_0    9 0 0
+121 mV_3_0    9 0 0
+122 mV_4_0    9 0 0
+123 mV_5_0    9 0 0
+124 mV_6_0    9 0 0
+125 mV_7_0    9 0 0
+126 mV_8_0    9 0 0
+127 mV_9_0    9 0 0
+128 mV_1_180  9 1 1
+129 mV_2_180  9 0 0
+130 mV_3_180  9 0 0
+131 mV_4_180  9 0 0
+132 mV_5_180  9 0 0
+133 mV_6_180  9 0 0
+134 mV_7_180  9 0 0
+135 mV_8_180  9 0 0
+136 mV_9_180  9 0 0
+137 V_1_Rf    13 2 1
+138 V_2_Rf    9 0 0
+139 V_3_Rf    9 0 0
+140 V_4_Rf    9 0 0
+141 V_5_Rf    9 0 0
+142 V_6_Rf    9 0 0
+143 V_7_Rf    9 0 0
+144 V_8_Rf    9 0 0
+145 V_9_Rf    9 0 0
+146 mV_end_1  9 1 1
+147 mV_end_2  9 0 0
+148 mV_end_3  9 0 0
+149 mV_end_4  9 0 0
+150 mV_end_5  9 0 0
+151 mV_end_6  9 0 0
+152 mV_end_7  9 0 0
+153 mV_end_8  9 0 0
+154 mV_end_9  17 0 0
+155 work      1 4 4
+156 sap_P1a   1 1 0
+157 sap_P1b   1 1 0
+158 sap_P2a   1 1 0
+159 sap_P2b   1 1 0
+160 sap_P3a   1 1 0
+161 sap_P3b   1 1 0
+162 sap_P4a   1 1 0
+163 sap_P4b   1 1 0
+164 sap_P5a   1 1 0
+165 sap_P5b   1 1 0
+166 sap_J1a   1 1 1
+167 sap_J1b   1 1 0
+168 sap_J2a   1 1 0
+169 sap_J2b   1 1 0
+170 sap_J3a   1 1 0
+171 sap_J3b   1 1 0
+172 sap_J4a   1 1 0
+173 sap_J4b   1 1 0
+174 sap_J5a   1 1 0
+175 sap_J5b   1 1 0
+176 sap_sp5b  1 1 1
+177 SCO2_P15  1 1 1
+178 SCO2_P110 1 1 0
+179 SCO2_P120 1 1 0
+180 SCO2_P140 1 1 0
+181 SCO2_P25  1 1 0
+182 SCO2_P210 1 1 0
+183 SCO2_P220 1 1 0
+184 SCO2_P240 1 1 0
+185 SCO2_J15  1 1 0
+186 SCO2_J120 1 1 0
+187 SCO2_J150 1 1 0
+188 SCO2_J25  5 1 1
+189 SCO2_J220 9 1 1
+190 SCO2_J250 17 1 1
+191 ca01on    1 1 1
+192 ca01off   1 1 1
+193 sap_sp1a  5 1 2
+194 sap_sp1b  9 1 1
+195 sap_sp2a  9 1 1
+196 sap_sp2b  9 1 1
+197 sap_sp3a  9 1 1
+198 sap_sp3b  9 1 1
+199 sap_sp4a  9 1 1
+200 sap_sp4b  9 1 1
+201 sap_sp5a  17 1 1
+202 ref_temp  1 2 1
+203 TDR_prb   1 1 27
+204 Wave_1    7 1 27
+205 Wave_2    11 1 0
+206 Wave_3    11 1 0
+207 Wave_4    11 1 0
+208 Wave_5    11 1 0
+209 Wave_6    11 1 0
+210 Wave_7    11 1 0
+211 Wave_8    11 1 0
+212 Wave_9    11 1 0
+213 Wave_10   11 1 0
+214 Wave_11   11 1 0
+215 Wave_12   11 1 0
+216 Wave_13   11 1 0
+217 Wave_14   11 1 0
+218 Wave_15   11 1 0
+219 Wave_16   11 1 0
+220 Wave_17   11 1 0
+221 Wave_18   11 1 0
+222 Wave_19   11 1 0
+223 Wave_20   11 1 0
+224 Wave_21   11 1 0
+225 Wave_22   11 1 0
+226 Wave_23   11 1 0
+227 Wave_24   11 1 0
+228 Wave_25   11 1 0
+229 Wave_26   11 1 0
+230 Wave_27   11 1 0
+231 Wave_28   11 1 0
+232 Wave_29   3 1 0
+233 Wave_30   3 1 0
+234 Wave_31   3 1 0
+235 Wave_32   3 1 0
+236 Wave_33   3 1 0
+237 Wave_34   3 1 0
+238 Wave_35   3 1 0
+239 Wave_36   3 1 0
+240 Wave_37   3 1 0
+241 Wave_38   3 1 0
+242 Wave_39   3 1 0
+243 Wave_40   3 1 0
+244 Wave_41   3 1 0
+245 Wave_42   3 1 0
+246 Wave_43   3 1 0
+247 Wave_44   3 1 0
+248 Wave_45   3 1 0
+249 Wave_46   3 1 0
+250 Wave_47   3 1 0
+251 Wave_48   3 1 0
+252 Wave_49   3 1 0
+253 Wave_50   3 1 0
+254 Wave_51   3 1 0
+255 Wave_52   3 1 0
+256 Wave_53   3 1 0
+257 Wave_54   3 1 0
+258 Wave_55   3 1 0
+259 Wave_56   3 1 0
+260 Wave_57   3 1 0
+261 Wave_58   3 1 0
+262 Wave_59   3 1 0
+263 Wave_60   3 1 0
+264 Wave_61   3 1 0
+265 Wave_62   3 1 0
+266 Wave_63   3 1 0
+267 Wave_64   3 1 0
+268 Wave_65   3 1 0
+269 Wave_66   3 1 0
+270 Wave_67   3 1 0
+271 Wave_68   3 1 0
+272 Wave_69   3 1 0
+273 Wave_70   3 1 0
+274 Wave_71   3 1 0
+275 Wave_72   3 1 0
+276 Wave_73   3 1 0
+277 Wave_74   3 1 0
+278 Wave_75   3 1 0
+279 Wave_76   3 1 0
+280 Wave_77   3 1 0
+281 Wave_78   3 1 0
+282 Wave_79   3 1 0
+283 Wave_80   3 1 0
+284 Wave_81   3 1 0
+285 Wave_82   3 1 0
+286 Wave_83   3 1 0
+287 Wave_84   3 1 0
+288 Wave_85   3 1 0
+289 Wave_86   3 1 0
+290 Wave_87   3 1 0
+291 Wave_88   3 1 0
+292 Wave_89   3 1 0
+293 Wave_90   3 1 0
+294 Wave_91   3 1 0
+295 Wave_92   3 1 0
+296 Wave_93   3 1 0
+297 Wave_94   3 1 0
+298 Wave_95   3 1 0
+299 Wave_96   3 1 0
+300 Wave_97   3 1 0
+301 Wave_98   3 1 0
+302 Wave_99   3 1 0
+303 Wave_100  3 1 0
+304 Wave_101  3 1 0
+305 Wave_102  3 1 0
+306 Wave_103  3 1 0
+307 Wave_104  3 1 0
+308 Wave_105  3 1 0
+309 Wave_106  3 1 0
+310 Wave_107  3 1 0
+311 Wave_108  3 1 0
+312 Wave_109  3 1 0
+313 Wave_110  3 1 0
+314 Wave_111  3 1 0
+315 Wave_112  3 1 0
+316 Wave_113  3 1 0
+317 Wave_114  3 1 0
+318 Wave_115  3 1 0
+319 Wave_116  3 1 0
+320 Wave_117  3 1 0
+321 Wave_118  3 1 0
+322 Wave_119  3 1 0
+323 Wave_120  3 1 0
+324 Wave_121  3 1 0
+325 Wave_122  3 1 0
+326 Wave_123  3 1 0
+327 Wave_124  3 1 0
+328 Wave_125  3 1 0
+329 Wave_126  3 1 0
+330 Wave_127  3 1 0
+331 Wave_128  3 1 0
+332 Wave_129  3 1 0
+333 Wave_130  3 1 0
+334 Wave_131  3 1 0
+335 Wave_132  3 1 0
+336 Wave_133  3 1 0
+337 Wave_134  3 1 0
+338 Wave_135  3 1 0
+339 Wave_136  3 1 0
+340 Wave_137  3 1 0
+341 Wave_138  3 1 0
+342 Wave_139  3 1 0
+343 Wave_140  3 1 0
+344 Wave_141  3 1 0
+345 Wave_142  3 1 0
+346 Wave_143  3 1 0
+347 Wave_144  3 1 0
+348 Wave_145  3 1 0
+349 Wave_146  3 1 0
+350 Wave_147  3 1 0
+351 Wave_148  3 1 0
+352 Wave_149  3 1 0
+353 Wave_150  3 1 0
+354 Wave_151  3 1 0
+355 Wave_152  3 1 0
+356 Wave_153  3 1 0
+357 Wave_154  3 1 0
+358 Wave_155  3 1 0
+359 Wave_156  3 1 0
+360 Wave_157  3 1 0
+361 Wave_158  3 1 0
+362 Wave_159  3 1 0
+363 Wave_160  3 1 0
+364 Wave_161  3 1 0
+365 Wave_162  3 1 0
+366 Wave_163  3 1 0
+367 Wave_164  3 1 0
+368 Wave_165  3 1 0
+369 Wave_166  3 1 0
+370 Wave_167  3 1 0
+371 Wave_168  3 1 0
+372 Wave_169  3 1 0
+373 Wave_170  3 1 0
+374 Wave_171  3 1 0
+375 Wave_172  3 1 0
+376 Wave_173  3 1 0
+377 Wave_174  3 1 0
+378 Wave_175  3 1 0
+379 Wave_176  3 1 0
+380 Wave_177  3 1 0
+381 Wave_178  3 1 0
+382 Wave_179  3 1 0
+383 Wave_180  3 1 0
+384 Wave_181  3 1 0
+385 Wave_182  3 1 0
+386 Wave_183  3 1 0
+387 Wave_184  3 1 0
+388 Wave_185  3 1 0
+389 Wave_186  3 1 0
+390 Wave_187  3 1 0
+391 Wave_188  3 1 0
+392 Wave_189  3 1 0
+393 Wave_190  3 1 0
+394 Wave_191  3 1 0
+395 Wave_192  3 1 0
+396 Wave_193  3 1 0
+397 Wave_194  3 1 0
+398 Wave_195  3 1 0
+399 Wave_196  3 1 0
+400 Wave_197  3 1 0
+401 Wave_198  3 1 0
+402 Wave_199  3 1 0
+403 Wave_200  3 1 0
+404 Wave_201  3 1 0
+405 Wave_202  3 1 0
+406 Wave_203  3 1 0
+407 Wave_204  3 1 0
+408 Wave_205  3 1 0
+409 Wave_206  3 1 0
+410 Wave_207  3 1 0
+411 Wave_208  3 1 0
+412 Wave_209  3 1 0
+413 Wave_210  3 1 0
+414 Wave_211  3 1 0
+415 Wave_212  3 1 0
+416 Wave_213  3 1 0
+417 Wave_214  3 1 0
+418 Wave_215  3 1 0
+419 Wave_216  3 1 0
+420 Wave_217  3 1 0
+421 Wave_218  3 1 0
+422 Wave_219  3 1 0
+423 Wave_220  3 1 0
+424 Wave_221  3 1 0
+425 Wave_222  3 1 0
+426 Wave_223  3 1 0
+427 Wave_224  3 1 0
+428 Wave_225  3 1 0
+429 Wave_226  3 1 0
+430 Wave_227  3 1 0
+431 Wave_228  3 1 0
+432 Wave_229  3 1 0
+433 Wave_230  3 1 0
+434 Wave_231  3 1 0
+435 Wave_232  3 1 0
+436 Wave_233  3 1 0
+437 Wave_234  3 1 0
+438 Wave_235  3 1 0
+439 Wave_236  3 1 0
+440 Wave_237  3 1 0
+441 Wave_238  3 1 0
+442 Wave_239  3 1 0
+443 Wave_240  3 1 0
+444 Wave_241  3 1 0
+445 Wave_242  3 1 0
+446 Wave_243  3 1 0
+447 Wave_244  3 1 0
+448 Wave_245  3 1 0
+449 Wave_246  3 1 0
+450 Wave_247  3 1 0
+451 Wave_248  3 1 0
+452 Wave_249  3 1 0
+453 Wave_250  3 1 0
+454 Wave_251  3 1 0
+455 Wave_252  3 1 0
+456 Wave_253  3 1 0
+457 Wave_254  3 1 0
+458 Wave_255  3 1 0
+459 Wave_256  3 1 0
+460 Wave_257  3 1 0
+461 Wave_258  3 1 0
+462 Wave_259  3 1 0
+463 Wave_260  19 1 0
+464 _________ 1 0 0
+-Program Security-
+0000
+0000
+0000
+-Mode 4-
+-Final Storage Area 2-
+84
+-CR10X ID-
+0
+-CR10X Power Up-
+3
+-CR10X Compile Setting-
+3
+-CR10X RS-232 Setting-
+-1
+-DLD File Labels-
+0
+-Final Storage Labels-
+0,200,13917
+1,100,1780
+2,Year_RTM,26652
+2,Day_RTM
+2,Hour_Minute_RTM
+3,T_P1_5_AVG~56,23083
+3,T_P1_10_AVG~57
+3,T_P1_30_AVG~58
+3,T_P2_5_AVG~59
+3,T_P2_10_AVG~60
+3,T_P2_30_AVG~61
+3,T_P3_5_AVG~62
+3,T_P3_10_AVG~63
+3,T_P3_30_AVG~64
+3,T_J1_5_AVG~65
+3,T_J1_10_AVG~66
+3,T_J1_30_AVG~67
+3,T_J2_5_AVG~68
+3,T_J2_10_AVG~69
+3,T_J2_30_AVG~70
+3,T_J3_5_AVG~71
+3,T_J3_10_AVG~72
+3,T_J3_30_AVG~73
+3,T_O1_5_AVG~74
+3,T_O1_10_AVG~75
+3,T_O1_30_AVG~76
+3,T_O2_5_AVG~77
+3,T_O2_10_AVG~78
+3,T_O2_30_AVG~79
+3,T_O3_5_AVG~80
+3,T_O3_10_AVG~81
+3,T_O3_30_AVG~82
+4,WC_P1_5_AVG~28,21289
+4,WC_P1_10_AVG~29
+4,WC_P1_30_AVG~30
+4,WC_P2_5_AVG~31
+4,WC_P2_10_AVG~32
+4,WC_P2_30_AVG~33
+4,WC_P3_5_AVG~34
+4,WC_P3_10_AVG~35
+4,WC_P3_30_AVG~36
+4,WC_J1_5_AVG~37
+4,WC_J1_10_AVG~38
+4,WC_J1_30_AVG~39
+4,WC_J2_5_AVG~40
+4,WC_J2_10_AVG~41
+4,WC_J2_30_AVG~42
+4,WC_J3_5_AVG~43
+4,WC_J3_10_AVG~44
+4,WC_J3_30_AVG~45
+4,WC_O1_5_AVG~46
+4,WC_O1_10_AVG~47
+4,WC_O1_30_AVG~48
+4,WC_O2_5_AVG~49
+4,WC_O2_10_AVG~50
+4,WC_O2_30_AVG~51
+4,WC_O3_5_AVG~52
+4,WC_O3_10_AVG~53
+4,WC_O3_30_AVG~54
+5,shf_P1_AVG~110,31895
+5,shf_P2_AVG~111
+5,shf_P3_AVG~112
+5,shf_J1_AVG~113
+5,shf_J2_AVG~114
+5,shf_J3_AVG~115
+5,shf_O1_AVG~116
+5,shf_O2_AVG~117
+5,shf_O3_AVG~118
+6,hfp_cal_1~101,18764
+6,hfp_cal_2~102
+6,hfp_cal_3~103
+6,hfp_cal_4~104
+6,hfp_cal_5~105
+6,hfp_cal_6~106
+6,hfp_cal_7~107
+6,hfp_cal_8~108
+6,hfp_cal_9~109
+7,sap_P1a_AVG~156,22617
+7,sap_P1b_AVG~157
+7,sap_P2a_AVG~158
+7,sap_P2b_AVG~159
+7,sap_P3a_AVG~160
+7,sap_P3b_AVG~161
+7,sap_P4a_AVG~162
+7,sap_P4b_AVG~163
+7,sap_P5a_AVG~164
+7,sap_P5b_AVG~165
+7,sap_J1a_AVG~166
+7,sap_J1b_AVG~167
+7,sap_J2a_AVG~168
+7,sap_J2b_AVG~169
+7,sap_J3a_AVG~170
+7,sap_J3b_AVG~171
+7,sap_J4a_AVG~172
+7,sap_J4b_AVG~173
+7,sap_J5a_AVG~174
+7,sap_J5b_AVG~175
+8,SCO2_P15_AVG~177,7210
+8,SCO2_P110_AVG~178
+8,SCO2_P120_AVG~179
+8,SCO2_P140_AVG~180
+8,SCO2_P25_AVG~181
+8,SCO2_P210_AVG~182
+8,SCO2_P220_AVG~183
+8,SCO2_P240_AVG~184
+9,sap_sp1a_AVG~193,16519
+9,sap_sp1b_AVG~194
+9,sap_sp2a_AVG~195
+9,sap_sp2b_AVG~196
+9,sap_sp3a_AVG~197
+9,sap_sp3b_AVG~198
+9,sap_sp4a_AVG~199
+9,sap_sp4b_AVG~200
+9,sap_sp5a_AVG~201
+10,sap_sp5b_AVG~176,32118
+11,Day_RTM,2211
+11,Hour_Minute_RTM
+11,Seconds_RTM
+12,ref_temp_AVG~202,8052
+13,T_P1_5_STD~56,18588
+13,T_P1_10_STD~57
+13,T_P1_30_STD~58
+13,T_P2_5_STD~59
+13,T_P2_10_STD~60
+13,T_P2_30_STD~61
+13,T_P3_5_STD~62
+13,T_P3_10_STD~63
+13,T_P3_30_STD~64
+14,shf_P1_STD~110,2562
+14,shf_P2_STD~111
+14,shf_P3_STD~112
+14,shf_J1_STD~113
+14,shf_J2_STD~114
+14,shf_J3_STD~115
+14,shf_O1_STD~116
+14,shf_O2_STD~117
+14,shf_O3_STD~118
+15,shfmV_P1_STD~83,7240
+15,shfmV_P2_STD~84
+15,shfmV_P3_STD~85
+15,shfmV_J1_STD~86
+15,shfmV_J2_STD~87
+15,shfmV_J3_STD~88
+15,shfmV_O1_STD~89
+15,shfmV_O2_STD~90
+15,shfmV_O3_STD~91
+16,ref_temp_STD~202,16379
+17,shfmV_O3_AVG~91,15785
+18,shfmV_O3_STD~91,31731
+19,shfmV_O3_MAX~91,256
+20,shfmV_O3_MIN~91,18776
+21,shfmV_P1_AVG~83,27173
+21,shfmV_P2_AVG~84
+21,shfmV_P3_AVG~85
+21,shfmV_J1_AVG~86
+21,shfmV_J2_AVG~87
+21,shfmV_J3_AVG~88
+21,shfmV_O1_AVG~89
+21,shfmV_O2_AVG~90
+21,shfmV_O3_AVG~91
+22,SCO2_J15_AVG~185,756
+22,SCO2_J120_AVG~186
+22,SCO2_J150_AVG~187
+22,SCO2_J25_AVG~188
+22,SCO2_J220_AVG~189
+22,SCO2_J250_AVG~190
+23,251,28749
+24,Year_RTM,19354
+24,Day_RTM
+24,Hour_Minute_RTM
+25,Wave_1~204,18130
+25,Wave_2~205
+25,Wave_3~206
+25,Wave_4~207
+25,Wave_5~208
+25,Wave_6~209
+25,Wave_7~210
+25,Wave_8~211
+25,Wave_9~212
+25,Wave_10~213
+25,Wave_11~214
+25,Wave_12~215
+25,Wave_13~216
+25,Wave_14~217
+25,Wave_15~218
+25,Wave_16~219
+25,Wave_17~220
+25,Wave_18~221
+25,Wave_19~222
+25,Wave_20~223
+25,Wave_21~224
+25,Wave_22~225
+25,Wave_23~226
+25,Wave_24~227
+25,Wave_25~228
+25,Wave_26~229
+25,Wave_27~230
+25,Wave_28~231
+25,Wave_29~232
+25,Wave_30~233
+25,Wave_31~234
+25,Wave_32~235
+25,Wave_33~236
+25,Wave_34~237
+25,Wave_35~238
+25,Wave_36~239
+25,Wave_37~240
+25,Wave_38~241
+25,Wave_39~242
+25,Wave_40~243
+25,Wave_41~244
+25,Wave_42~245
+25,Wave_43~246
+25,Wave_44~247
+25,Wave_45~248
+25,Wave_46~249
+25,Wave_47~250
+25,Wave_48~251
+25,Wave_49~252
+25,Wave_50~253
+25,Wave_51~254
+25,Wave_52~255
+25,Wave_53~256
+25,Wave_54~257
+25,Wave_55~258
+25,Wave_56~259
+25,Wave_57~260
+25,Wave_58~261
+25,Wave_59~262
+25,Wave_60~263
+25,Wave_61~264
+25,Wave_62~265
+25,Wave_63~266
+25,Wave_64~267
+25,Wave_65~268
+25,Wave_66~269
+25,Wave_67~270
+25,Wave_68~271
+25,Wave_69~272
+25,Wave_70~273
+25,Wave_71~274
+25,Wave_72~275
+25,Wave_73~276
+25,Wave_74~277
+25,Wave_75~278
+25,Wave_76~279
+25,Wave_77~280
+25,Wave_78~281
+25,Wave_79~282
+25,Wave_80~283
+25,Wave_81~284
+25,Wave_82~285
+25,Wave_83~286
+25,Wave_84~287
+25,Wave_85~288
+25,Wave_86~289
+25,Wave_87~290
+25,Wave_88~291
+25,Wave_89~292
+25,Wave_90~293
+25,Wave_91~294
+25,Wave_92~295
+25,Wave_93~296
+25,Wave_94~297
+25,Wave_95~298
+25,Wave_96~299
+25,Wave_97~300
+25,Wave_98~301
+25,Wave_99~302
+25,Wave_100~303
+25,Wave_101~304
+25,Wave_102~305
+25,Wave_103~306
+25,Wave_104~307
+25,Wave_105~308
+25,Wave_106~309
+25,Wave_107~310
+25,Wave_108~311
+25,Wave_109~312
+25,Wave_110~313
+25,Wave_111~314
+25,Wave_112~315
+25,Wave_113~316
+25,Wave_114~317
+25,Wave_115~318
+25,Wave_116~319
+25,Wave_117~320
+25,Wave_118~321
+25,Wave_119~322
+25,Wave_120~323
+25,Wave_121~324
+25,Wave_122~325
+25,Wave_123~326
+25,Wave_124~327
+25,Wave_125~328
+25,Wave_126~329
+25,Wave_127~330
+25,Wave_128~331
+25,Wave_129~332
+25,Wave_130~333
+25,Wave_131~334
+25,Wave_132~335
+25,Wave_133~336
+25,Wave_134~337
+25,Wave_135~338
+25,Wave_136~339
+25,Wave_137~340
+25,Wave_138~341
+25,Wave_139~342
+25,Wave_140~343
+25,Wave_141~344
+25,Wave_142~345
+25,Wave_143~346
+25,Wave_144~347
+25,Wave_145~348
+25,Wave_146~349
+25,Wave_147~350
+25,Wave_148~351
+25,Wave_149~352
+25,Wave_150~353
+25,Wave_151~354
+25,Wave_152~355
+25,Wave_153~356
+25,Wave_154~357
+25,Wave_155~358
+25,Wave_156~359
+25,Wave_157~360
+25,Wave_158~361
+25,Wave_159~362
+25,Wave_160~363
+25,Wave_161~364
+25,Wave_162~365
+25,Wave_163~366
+25,Wave_164~367
+25,Wave_165~368
+25,Wave_166~369
+25,Wave_167~370
+25,Wave_168~371
+25,Wave_169~372
+25,Wave_170~373
+25,Wave_171~374
+25,Wave_172~375
+25,Wave_173~376
+25,Wave_174~377
+25,Wave_175~378
+25,Wave_176~379
+25,Wave_177~380
+25,Wave_178~381
+25,Wave_179~382
+25,Wave_180~383
+25,Wave_181~384
+25,Wave_182~385
+25,Wave_183~386
+25,Wave_184~387
+25,Wave_185~388
+25,Wave_186~389
+25,Wave_187~390
+25,Wave_188~391
+25,Wave_189~392
+25,Wave_190~393
+25,Wave_191~394
+25,Wave_192~395
+25,Wave_193~396
+25,Wave_194~397
+25,Wave_195~398
+25,Wave_196~399
+25,Wave_197~400
+25,Wave_198~401
+25,Wave_199~402
+25,Wave_200~403
+25,Wave_201~404
+25,Wave_202~405
+25,Wave_203~406
+25,Wave_204~407
+25,Wave_205~408
+25,Wave_206~409
+25,Wave_207~410
+25,Wave_208~411
+25,Wave_209~412
+25,Wave_210~413
+25,Wave_211~414
+25,Wave_212~415
+25,Wave_213~416
+25,Wave_214~417
+25,Wave_215~418
+25,Wave_216~419
+25,Wave_217~420
+25,Wave_218~421
+25,Wave_219~422
+25,Wave_220~423
+25,Wave_221~424
+25,Wave_222~425
+25,Wave_223~426
+25,Wave_224~427
+25,Wave_225~428
+25,Wave_226~429
+25,Wave_227~430
+25,Wave_228~431
+25,Wave_229~432
+25,Wave_230~433
+25,Wave_231~434
+25,Wave_232~435
+25,Wave_233~436
+25,Wave_234~437
+25,Wave_235~438
+25,Wave_236~439
+25,Wave_237~440
+25,Wave_238~441
+25,Wave_239~442
+25,Wave_240~443
+25,Wave_241~444
+25,Wave_242~445
+25,Wave_243~446
+25,Wave_244~447
+25,Wave_245~448
+25,Wave_246~449
+25,Wave_247~450
+25,Wave_248~451
+25,Wave_249~452
+25,Wave_250~453
+25,Wave_251~454
+25,Wave_252~455
+25,Wave_253~456
+25,Wave_254~457
+25,Wave_255~458
+25,Wave_256~459
+25,Wave_257~460
+25,Wave_258~461
+25,Wave_259~462
+25,Wave_260~463
+26,TDR_prb~203,32220

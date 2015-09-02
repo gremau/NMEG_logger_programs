@@ -1,0 +1,105 @@
+'CR1000 Series Datalogger
+'To create a different opening program template, type in new
+'instructions and select Template | Save as Default Template
+'date:April 26, 2012
+'program author:  Marcy Litvak
+
+'Declare Public Variables
+'Example:
+
+'AM16/32B (Reset = C2, Clock = C1) control and measurement variables.
+Public mux_cs616_start As Boolean	'Set high to start AM16/32B (Reset = C2, Clock = C1) measurements.
+Public cs616_wcr(18)			'CS616 water content reflectometer measurement.
+Dim Tsoil_spa_mean(3)			'Spatial mean of all available soil temperature measurements.
+Units cs616_wcr = uSeconds
+
+
+Dim cs616_T(18)				'Water content reflectometer period with temperature correction.
+Public Dim mux_cs616_wcr				'Raw measurement from the AM16/32B (Reset = C7, Clock = C1).
+Dim mux_cs616_on As Boolean		'Turn on the AM16/32B (Reset = C2, Clock = C1).
+Dim mux_cs616_clock As Boolean	'Clock the AM16/32B (Reset = C2, Clock = C1).
+Dim mux_cs616_index As Long		'AM16/32B (Reset = C2, Clock = C1) index variable.
+Dim mux_cs616_disbl As Boolean	'Disable output processing, unless new AM16/32A measurements were made.
+Dim mux_cs616_j				'Generic multiplexer counter.
+Dim mux_cs616_n				'Number of samples in the AM16/32B statistics.
+Dim cs616_wcr_tmp(18+1)			'Raw CS616 measurements, offset by one element.
+Units mux_cs616_n = samples
+
+Public batt_volt
+'Declare Other Variables
+'Example:
+'Dim Counter
+
+'Declare Constants
+Const YES = -1					'Yes is defined as True or -1.
+Const NO = 0	            	'No is defined as False or 0.
+
+
+
+'Define Data Tables
+DataTable (soilwater,TRUE,1440)
+	DataInterval (0,30,Min,10)
+	CardOut (0,2880)
+	Minimum (1,batt_volt,FP2,0,False)
+	Sample (18,cs616_wcr(1),IEEE4)
+EndTable
+
+'Define Subroutines
+'Sub
+	'EnterSub instructions here
+'EndSub
+
+'Main Program
+BeginProg
+	Scan (1,Min,0,0)
+
+   Battery (batt_volt)
+		'Reset AM16/32B (Reset = C2, Clock = C1).
+		PortSet (2,mux_cs616_on)
+		Delay (0,150,msec)
+		
+
+		'Clock the AM16/32B (Reset = C2, Clock = C1).
+		PulsePort (1,10000)
+		Delay (0,40,mSec)
+		PulsePort (1,FALSE)
+
+		'Measure 18 CS616s on a AM16/32B (Reset = C2, Clock = C1).
+		CS616 (mux_cs616_wcr,1,1,3,2,1,0)
+
+
+		If ( mux_cs616_on ) Then
+			mux_cs616_index = mux_cs616_index+1
+			cs616_wcr_tmp(mux_cs616_index) = mux_cs616_wcr
+			If ( mux_cs616_index = 18 ) Then ( mux_cs616_clock = FALSE )
+		EndIf
+
+		'Start automatic AM16/32B (Reset = C2, Clock = C1). measurements.
+		If ( IfTime (15,30,Min) ) Then ( mux_cs616_start = TRUE )
+
+		'Turn on the AM16/32B (Reset = C2, Clock = C1)., under automatic or manual control.
+		If ( mux_cs616_start ) Then
+			mux_cs616_start = FALSE
+			mux_cs616_on = TRUE
+			mux_cs616_clock = TRUE
+		EndIf
+
+		'End AM16/32B (Reset = C2, Clock = C1). measurements.
+		If ( mux_cs616_index > 18) Then
+			mux_cs616_on = FALSE
+			mux_cs616_index = 0
+			mux_cs616_disbl = FALSE
+			Move (cs616_wcr(1),18,cs616_wcr_tmp(2),18)
+
+	Else
+			mux_cs616_disbl = TRUE
+		EndIf
+
+
+
+CallTable soilwater
+
+
+	NextScan
+EndProg
+

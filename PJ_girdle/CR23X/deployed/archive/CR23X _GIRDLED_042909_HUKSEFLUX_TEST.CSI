@@ -1,0 +1,1046 @@
+;{CR23X}
+;
+;port 6 for TDR100 relay
+;port 4 is mux 1 reset
+;port 5 is mux 1 clock
+
+;port 2 is for heat flux relay
+;port 7 is for mux 2 reset
+;port 8 is for mux 2 clock
+
+
+
+*Table 1 Program
+  01: 5         Execution Interval (seconds)
+
+1:  Batt Voltage (P10)
+ 1: 55       Loc [ Bat_Volt  ]
+
+
+;measure TDR probes
+
+2:  If time is (P92)
+ 1: 0        Minutes (Seconds --) into a
+ 2: 5        Interval (same units as above)
+ 3: 30       Then Do
+
+
+
+
+;measure TDR probes
+
+3:  Do (P86)
+ 1: 49       Turn On Switched 12V
+
+
+4:  Delay w/Opt Excitation (P22)
+ 1: 2        Ex Channel
+ 2: 300      Delay W/Ex (0.01 sec units)
+ 3: 0        Delay After Ex (0.01 sec units)
+ 4: 0        mV Excitation
+
+
+
+5:  TDR100 Measurement (P119)
+ 1: 00       SDM Address
+ 2: 0        La/L for Water Content
+ 3: 1006     MMMP Mux & Probe Selection
+ 4: 4        Waveform Averaging
+ 5: 1        Vp
+ 6: 251      Points
+ 7: 22       Cable Length (meters)
+ 8: 4        Window Length (meters)
+ 9: .3       Probe Length (meters)
+10: .085     Probe Offset (meters)
+11: 1        Loc [ LaLP1_5   ]
+12: 1.0      Multiplier
+13: 0        Offset
+
+6:  TDR100 Measurement (P119)
+ 1: 00       SDM Address
+ 2: 0        La/L for Water Content
+ 3: 7108     MMMP Mux & Probe Selection
+ 4: 4        Waveform Averaging
+ 5: 1        Vp
+ 6: 251      Points
+ 7: 23       Cable Length (meters)
+ 8: 4        Window Length (meters)
+ 9: 0.3      Probe Length (meters)
+10: .085     Probe Offset (meters)
+11: 7        Loc [ LaLP3_5   ]
+12: 1.0      Multiplier
+13: 0.0      Offset
+
+7:  TDR100 Measurement (P119)
+ 1: 00       SDM Address
+ 2: 0        La/L for Water Content
+ 3: 8107     MMMP Mux & Probe Selection
+ 4: 4        Waveform Averaging
+ 5: 1        Vp
+ 6: 251      Points
+ 7: 22.5     Cable Length (meters)
+ 8: 4        Window Length (meters)
+ 9: .3       Probe Length (meters)
+10: .085     Probe Offset (meters)
+11: 15       Loc [ LaLJ2_30  ]
+12: 1.0      Multiplier
+13: 0.0      Offset
+
+8:  TDR100 Measurement (P119)
+ 1: 00       SDM Address
+ 2: 0        La/L for Water Content
+ 3: 8816     MMMP Mux & Probe Selection
+ 4: 4        Waveform Averaging
+ 5: 1        Vp
+ 6: 251      Points
+ 7: 24       Cable Length (meters)
+ 8: 4        Window Length (meters)
+ 9: .3       Probe Length (meters)
+10: .085     Probe Offset (meters)
+11: 22       Loc [ LaLO2_5   ]
+12: 1.0      Multiplier
+13: 0.0      Offset
+
+
+9:  Do (P86)
+ 1: 59       Turn Off Switched 12V
+
+
+
+
+;process TDR data collected above
+
+10:  Beginning of Loop (P87)
+ 1: 0        Delay
+ 2: 27       Loop Count
+
+
+     11:  Z=X*Y (P36)
+      1: 1     -- X Loc [ LaLP1_5   ]
+      2: 1     -- Y Loc [ LaLP1_5   ]
+      3: 28    -- Z Loc [ WC_P1_5   ]
+
+
+
+     12:  Z=X*F (P37)
+      1: 28    -- X Loc [ WC_P1_5   ]
+      2: .1       F
+      3: 28    -- Z Loc [ WC_P1_5   ]
+
+
+     13:  Polynomial (P55)
+      1: 1        Reps
+      2: 28    -- X Loc [ WC_P1_5   ]
+      3: 28    -- F(X) Loc [ WC_P1_5   ]
+      4: -0.053   C0
+      5: .292     C1
+      6: -0.055   C2
+      7: 0.0043   C3
+      8: 0.0      C4
+      9: 0.0      C5
+
+
+14:  End (P95)
+
+
+15:  End (P95)
+
+; turn on Mux 2
+
+16:  Do (P86)
+ 1: 47       Set Port 7 High
+
+;measure sap flow probes on a 16/32 mux set in 2x32 mode
+
+17:  Beginning of Loop (P87)
+ 1: 0        Delay
+ 2: 20       Loop Count
+
+     18:  Step Loop Index (P90)
+      1: 1        Step
+
+     19:  Do (P86)
+      1: 78       Pulse Port 8
+
+     20:  Volt (Diff) (P2)
+      1: 1        Reps
+      2: 21       10 mV, 60 Hz Reject, Slow Range
+      3: 3        DIFF Channel
+      4: 165   -- Loc [ sap_P1a   ]
+      5: 1.0      Multiplier
+      6: 0.0      Offset
+
+21:  End (P95)
+
+;CO2 probes
+
+22:  Beginning of Loop (P87)
+ 1: 0        Delay
+ 2: 8        Loop Count
+
+     23:  Step Loop Index (P90)
+      1: 1        Step
+
+     24:  Do (P86)
+      1: 78       Pulse Port 8
+
+     25:  Volt (Diff) (P2)
+      1: 1        Reps
+      2: 24       1000 mV, 60 Hz Reject, Slow Range
+      3: 3        DIFF Channel
+      4: 185   -- Loc [ SCO2_P15  ]
+      5: 1.0      Multiplier
+      6: 0.0      Offset
+
+26:  End (P95)
+
+27:  Do (P86)
+ 1: 57       Set Port 7 Low
+
+;  measure 107 probes on Mux 1 - 27 probes and 9 heat flux plates
+; (2 SE measurements each)
+
+28:  Do (P86)
+ 1: 44       Set Port 4 High
+
+29:  Beginning of Loop (P87)
+ 1: 0        Delay
+ 2: 9        Loop Count
+
+
+     30:  Step Loop Index (P90)
+      1: 3        Step
+
+     31:  Do (P86)
+      1: 75       Pulse Port 5
+
+
+     32:  Delay w/Opt Excitation (P22)
+      1: 1        Ex Channel
+      2: 0        Delay W/Ex (0.01 sec units)
+      3: 1        Delay After Ex (0.01 sec units)
+      4: 0        mV Excitation
+
+
+
+
+     33:  Temp (107) (P11)
+      1: 3        Reps
+      2: 1        SE Channel
+      3: 21       Excite all reps w/E1, 60Hz, 10ms delay
+      4: 56    -- Loc [ T_P1_5    ]
+      5: 1.0      Multiplier
+      6: 0.0      Offset
+
+
+
+34:  End (P95)
+
+
+
+35:  Beginning of Loop (P87)
+ 1: 0        Delay
+ 2: 3        Loop Count
+
+
+     36:  Step Loop Index (P90)
+      1: 3        Step
+
+     37:  Do (P86)
+      1: 75       Pulse Port 5
+
+
+;measure heat flux plates
+
+     38:  Volt (SE) (P1)
+      1: 3        Reps
+      2: 21       10 mV, 60 Hz Reject, Slow Range
+      3: 1        SE Channel
+      4: 83    -- Loc [ shfmV_P1  ]
+      5: 1.0      Multiplier
+      6: 0.0      Offset
+
+
+     39:  Volt (SE) (P1)
+      1: 3        Reps
+      2: 22       50 mV, 60 Hz Reject, Slow Range
+      3: 1        SE Channel
+      4: 92    -- Loc [ hfmV_a_P1 ]
+      5: 1.0      Multiplier
+      6: 0.0      Offset
+
+
+40:  End (P95)
+
+;external relay to control power
+;once a day turn on the switched 12V to cal heat flux plates
+
+
+41:  Z=F x 10^n (P30)
+ 1: 0        F
+ 2: 0        n, Exponent of 10
+ 3: 194      Z Loc [ ca01off   ]
+
+
+42:  Z=F x 10^n (P30)
+ 1: 5000     F
+ 2: 0        n, Exponent of 10
+ 3: 193      Z Loc [ ca01on    ]
+
+
+43:  If time is (P92)
+ 1: 0        Minutes (Seconds --) into a
+ 2: 3        Interval (same units as above)
+ 3: 30       Then Do
+
+
+44:  Analog Out (P133)
+ 1: 1        CAO1
+ 2: 193      mV Loc [ ca01on    ]
+
+
+45:  End (P95)
+
+
+
+46:  If time is (P92)
+ 1: 1        Minutes (Seconds --) into a
+ 2: 1440     Interval (same units as above)
+ 3: 30       Then Do
+
+
+
+     47:  Analog Out (P133)
+      1: 1        CAO1
+      2: 194      mV Loc [ ca01off   ]
+
+
+
+48:  End (P95)
+
+
+
+
+49:  If time is (P92)
+ 1: 4        Minutes (Seconds --) into a
+ 2: 1440     Interval (same units as above)
+ 3: 11       Set Flag 1 High
+
+
+; continue with same mux
+; blocks 8 through 14
+
+
+50:  Beginning of Loop (P87)
+ 1: 0        Delay
+ 2: 3        Loop Count
+
+
+     51:  Step Loop Index (P90)
+      1: 3        Step
+
+     52:  Do (P86)
+      1: 75       Pulse Port 5
+
+
+     53:  Volt (SE) (P1)
+      1: 3        Reps
+      2: 21       10 mV, 60 Hz Reject, Slow Range
+      3: 1        SE Channel
+      4: 101   -- Loc [ HF_res_P1 ]
+      5: .001     Multiplier
+      6: 0.0      Offset
+
+
+54:  End (P95)
+
+
+
+
+
+
+     55:  Do (P86)
+      1: 54       Set Port 4 Low
+
+
+     56:  If (X<=>F) (P89)
+      1: 110      X Loc [ hfp_cal_1 ]
+      2: 1        =
+      3: 0.0      F
+      4: 30       Then Do
+
+
+;factory calibration in W/(m^2 mV) = 1000/sensitivity
+
+;load in the factory calibration
+
+          57:  Z=F x 10^n (P30)
+           1: 16.13    F
+           2: 0        n, Exponent of 10
+           3: 110      Z Loc [ hfp_cal_1 ]
+
+
+          58:  Z=F x 10^n (P30)
+           1: 14.88    F
+           2: 0        n, Exponent of 10
+           3: 111      Z Loc [ hfp_cal_2 ]
+
+
+          59:  Z=F x 10^n (P30)
+           1: 0.0      F
+           2: 0        n, Exponent of 10
+           3: 112      Z Loc [ hfp_cal_3 ]
+
+          60:  Z=F x 10^n (P30)
+           1: 15.53    F
+           2: 0        n, Exponent of 10
+           3: 113      Z Loc [ hfp_cal_4 ]
+
+          61:  Z=F x 10^n (P30)
+           1: 14.97    F
+           2: 0        n, Exponent of 10
+           3: 114      Z Loc [ hfp_cal_5 ]
+
+          62:  Z=F x 10^n (P30)
+           1: 0.0      F
+           2: 0        n, Exponent of 10
+           3: 115      Z Loc [ hfp_cal_6 ]
+
+
+          63:  Z=F x 10^n (P30)
+           1: 15.36    F
+           2: 00       n, Exponent of 10
+           3: 116      Z Loc [ hfp_cal_7 ]
+
+
+
+          64:  Z=F x 10^n (P30)
+           1: 15.17    F
+           2: 00       n, Exponent of 10
+           3: 117      Z Loc [ hfp_cal_8 ]
+
+
+          65:  Z=F x 10^n (P30)
+           1: 0.0      F
+           2: 00       n, Exponent of 10
+           3: 118      Z Loc [ hfp_cal_9 ]
+
+
+
+     66:  End (P95)
+
+;process heat flux plate cal
+
+     67:  Beginning of Loop (P87)
+      1: 0        Delay
+      2: 9        Loop Count
+
+
+; use data from the larger measurement range
+
+          68:  If (X<=>F) (P89)
+           1: 83    -- X Loc [ shfmV_P1  ]
+           2: 4        <
+           3: -99990   F
+           4: 30       Then Do
+
+
+               69:  Z=X (P31)
+                1: 92    -- X Loc [ hfmV_a_P1 ]
+                2: 83    -- Z Loc [ shfmV_P1  ]
+
+
+          70:  End (P95)
+;Apply custom calibration to the raw soil heat flux measurement
+
+          71:  Z=X*Y (P36)
+           1: 83    -- X Loc [ shfmV_P1  ]
+           2: 110   -- Y Loc [ hfp_cal_1 ]
+           3: 119   -- Z Loc [ shf_P1    ]
+
+
+
+     72:  End (P95)
+
+
+
+
+
+
+
+
+;Output data
+
+
+     73:  If time is (P92)
+      1: 0        Minutes (Seconds --) into a
+      2: 30       Interval (same units as above)
+      3: 10       Set Output Flag High (Flag 0)
+
+
+
+
+     74:  Set Active Storage Area (P80)^30512
+      1: 1        Final Storage Area 1
+      2: 100      Array ID
+
+
+     75:  Real Time (P77)^11136
+      1: 1220     Year,Day,Hour/Minute (midnight = 2400) ;
+
+
+     76:  Resolution (P78)
+      1: 1        High Resolution
+
+
+     77:  Average (P71)^26685
+      1: 27       Reps
+      2: 56       Loc [ T_P1_5    ]
+
+
+
+     78:  Average (P71)^18214
+      1: 27       Reps
+      2: 28       Loc [ WC_P1_5   ]
+
+
+
+;do not include that calibratin data in teh soil heat flux
+
+     79:  If Flag/Port (P91)
+      1: 18       Do if Flag 8 is High
+      2: 19       Set Intermed. Proc. Disable Flag High (Flag 9)
+
+
+     80:  Average (P71)^26513
+      1: 9        Reps
+      2: 119   -- Loc [ shf_P1    ]
+
+
+     81:  Do (P86)
+      1: 29       Set Intermed. Proc. Disable Flag Low (Flag 9)
+
+     82:  Sample (P70)^12058
+      1: 9        Reps
+      2: 110   -- Loc [ hfp_cal_1 ]
+
+
+
+     83:  Average (P71)^20277
+      1: 10       Reps
+      2: 165      Loc [ sap_P1a   ]
+
+
+
+     84:  Average (P71)^813
+      1: 8        Reps
+      2: 185      Loc [ SCO2_P15  ]
+
+
+
+
+     85:  Do (P86)
+      1: 8        Call Subroutine 8
+
+
+
+*Table 2 Program
+  02: 0.0000    Execution Interval (seconds)
+
+*Table 3 Subroutines
+; calibration routine
+
+
+1:  Beginning of Subroutine (P85)
+ 1: 8        Subroutine 8
+
+; perform in-situ calibration
+
+     2:  If time is (P92)
+      1: 1        Minutes (Seconds --) into a
+      2: 1440     Interval (same units as above)
+      3: 30       Then Do
+
+
+
+          3:  Beginning of Loop (P87)
+           1: 0        Delay
+           2: 9        Loop Count
+
+
+               4:  Z=X (P31)
+                1: 83    -- X Loc [ shfmV_P1  ]
+                2: 128   -- Z Loc [ mV_1_0    ]
+
+
+
+          5:  End (P95)
+
+
+;begin heating for calibration
+
+;done above
+
+
+
+;used to filter data during and after calibration
+
+          6:  Do (P86)
+           1: 18       Set Flag 8 High
+
+
+     7:  End (P95)
+
+
+; end site calibration three minutes after calibration started
+
+
+     8:  If time is (P92)
+      1: 4        Minutes (Seconds --) into a
+      2: 1440     Interval (same units as above)
+      3: 30       Then Do
+
+
+; measure voltage across current shunt resistor during calibration.
+; this measurements is used to compute power
+
+
+
+          9:  Beginning of Loop (P87)
+           1: 0        Delay
+           2: 9        Loop Count
+
+               10:  Z=X (P31)
+                1: 101   -- X Loc [ HF_res_P1 ]
+                2: 146   -- Z Loc [ V_1_Rf    ]
+
+
+
+               11:  Z=X (P31)
+                1: 83    -- X Loc [ shfmV_P1  ]
+                2: 137   -- Z Loc [ mV_1_1440 ]
+
+
+          12:  End (P95)
+
+
+; turn off the soil heat flux plate heater
+
+
+
+     13:  End (P95)
+
+; Compute in-situ calibration
+
+
+     14:  If time is (P92)
+      1: 39       Minutes (Seconds --) into a
+      2: 1440     Interval (same units as above)
+      3: 30       Then Do
+
+
+          15:  Beginning of Loop (P87)
+           1: 0        Delay
+           2: 9        Loop Count
+
+
+               16:  Z=X (P31)
+                1: 83    -- X Loc [ shfmV_P1  ]
+                2: 155   -- Z Loc [ mV_end_1  ]
+
+
+
+               17:  Z=X*Y (P36)
+                1: 146   -- X Loc [ V_1_Rf    ]
+                2: 146   -- Y Loc [ V_1_Rf    ]
+                3: 110   -- Z Loc [ hfp_cal_1 ]
+
+
+
+               18:  Z=X*F (P37)
+                1: 110   -- X Loc [ hfp_cal_1 ]
+                2: 128.7    F
+                3: 110   -- Z Loc [ hfp_cal_1 ]
+
+
+
+
+               19:  Z=X+Y (P33)
+                1: 128   -- X Loc [ mV_1_0    ]
+                2: 155   -- Y Loc [ mV_end_1  ]
+                3: 164      Z Loc [ work      ]
+
+
+
+               20:  Z=X*F (P37)
+                1: 164      X Loc [ work      ]
+                2: .5       F
+                3: 164      Z Loc [ work      ]
+
+
+               21:  Z=X-Y (P35)
+                1: 164      X Loc [ work      ]
+                2: 137   -- Y Loc [ mV_1_1440 ]
+                3: 164      Z Loc [ work      ]
+
+
+
+               22:  Z=ABS(X) (P43)
+                1: 164      X Loc [ work      ]
+                2: 164      Z Loc [ work      ]
+
+
+
+               23:  Z=X/Y (P38)
+                1: 110   -- X Loc [ hfp_cal_1 ]
+                2: 164      Y Loc [ work      ]
+                3: 110   -- Z Loc [ hfp_cal_1 ]
+
+
+          24:  End (P95)
+
+     25:  End (P95)
+
+
+26:  End (P95)
+
+
+End Program
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-Input Locations-
+1 LaLP1_5   1 2 1
+2 LaLP1_10  0 0 0
+3 LaLP1_30  0 0 0
+4 LaLP2_5   0 0 0
+5 LaLP2_10  0 0 0
+6 LaLP2_30  1 0 0
+7 LaLP3_5   1 0 1
+8 LaLP3_10  0 0 0
+9 LaLP3_30  0 0 0
+10 LaLJ1_5   0 0 0
+11 LaLJ1_10  0 0 0
+12 LaLJ1_30  0 0 0
+13 LaLJ2_5   0 0 0
+14 LaLJ2_10  0 0 0
+15 LaLJ2_30  1 0 1
+16 LaLJ3_5   0 0 0
+17 LaLJ3_10  0 0 0
+18 LaLJ3_30  0 0 0
+19 LaLO1_5   0 0 0
+20 LaLO1_10  0 0 0
+21 LaLO1_30  0 0 0
+22 LaLO2_5   1 0 1
+23 LaLO2_10  1 0 0
+24 LaLO2_30  0 0 0
+25 LaLO3_5   0 0 0
+26 LaLO3_10  0 0 0
+27 LaLO3_30  0 0 0
+28 WC_P1_5   1 3 3
+29 WC_P1_10  1 1 0
+30 WC_P1_30  1 1 0
+31 WC_P2_5   1 1 0
+32 WC_P2_10  1 1 0
+33 WC_P2_30  1 1 0
+34 WC_P3_5   1 1 0
+35 WC_P3_10  1 0 0
+36 WC_P3_30  1 0 0
+37 WC_J1_5   1 0 0
+38 WC_J1_10  1 0 0
+39 WC_J1_30  1 0 0
+40 WC_J2_5   1 0 0
+41 WC_J2_10  1 0 0
+42 WC_J2_30  1 0 0
+43 WC_J3_5   1 0 0
+44 WC_J3_10  1 0 0
+45 WC_J3_30  1 0 0
+46 WC_O1_5   1 0 0
+47 WC_O1_10  1 0 0
+48 WC_O1_30  1 0 0
+49 WC_O2_5   1 0 0
+50 WC_O2_10  1 0 0
+51 WC_O2_30  1 0 0
+52 WC_O3_5   1 0 0
+53 WC_O3_10  1 0 0
+54 WC_O3_30  1 0 0
+55 Bat_Volt  1 1 1
+56 T_P1_5    5 1 1
+57 T_P1_10   9 0 1
+58 T_P1_30   17 0 1
+59 T_P2_5    1 0 0
+60 T_P2_10   1 0 0
+61 T_P2_30   1 0 0
+62 T_P3_5    1 0 0
+63 T_P3_10   1 0 0
+64 T_P3_30   1 0 0
+65 T_J1_5    1 0 0
+66 T_J1_10   1 0 0
+67 T_J1_30   1 0 0
+68 T_J2_5    1 0 0
+69 T_J2_10   1 0 0
+70 T_J2_30   1 0 0
+71 T_J3_5    1 0 0
+72 T_J3_10   1 0 0
+73 T_J3_30   1 0 0
+74 T_O1_5    1 0 0
+75 T_O1_10   1 0 0
+76 T_O1_30   1 0 0
+77 T_O2_5    1 0 0
+78 T_O2_10   1 0 0
+79 T_O2_30   1 0 0
+80 T_O3_5    1 0 0
+81 T_O3_10   1 0 0
+82 T_O3_30   1 0 0
+83 shfmV_P1  5 5 2
+84 shfmV_P2  9 0 1
+85 shfmV_P3  17 0 1
+86 shfmV_J1  0 0 0
+87 shfmV_J2  0 0 0
+88 shfmV_J3  0 0 0
+89 shfmV_O1  0 0 0
+90 shfmV_O2  0 0 0
+91 shfmV_O3  0 0 0
+92 hfmV_a_P1 5 1 1
+93 hfmV_a_P2 9 0 1
+94 hfmV_a_P3 17 0 1
+95 hfmV_a_J1 0 0 0
+96 hfmV_a_J2 0 0 0
+97 hfmV_a_J3 0 0 0
+98 hfmV_a_O1 0 0 0
+99 hfmV_a_O2 0 0 0
+100 hfmV_a_O3 0 0 0
+101 HF_res_P1 5 1 1
+102 HF_res_P2 9 0 1
+103 HF_res_P3 17 0 1
+104 HF_res_J1 0 0 0
+105 HF_res_J2 0 0 0
+106 HF_res_J3 0 0 0
+107 HF_res_O1 0 0 0
+108 HF_res_O2 0 0 0
+109 HF_res_O3 0 0 0
+110 hfp_cal_1 1 5 5
+111 hfp_cal_2 1 1 1
+112 hfp_cal_3 1 1 1
+113 hfp_cal_4 1 1 1
+114 hfp_cal_5 1 1 1
+115 hfp_cal_6 1 1 1
+116 hfp_cal_7 1 0 1
+117 hfp_cal_8 1 0 1
+118 hfp_cal_9 1 0 1
+119 shf_P1    1 1 1
+120 shf_P2    1 1 0
+121 shf_P3    0 0 0
+122 shf_J1    1 1 0
+123 shf_J2    1 1 0
+124 shf_J3    0 0 0
+125 shf_O1    1 1 0
+126 shf_O2    1 1 0
+127 shf_O3    0 0 0
+128 mV_1_0    1 1 1
+129 mV_2_0    0 0 0
+130 mV_3_0    0 0 0
+131 mV_4_0    0 0 0
+132 mV_5_0    0 0 0
+133 mV_6_0    0 0 0
+134 mV_7_0    0 0 0
+135 mV_8_0    0 0 0
+136 mV_9_0    0 0 0
+137 mV_1_1440 1 1 1
+138 mV_2_1440 0 0 0
+139 mV_3_1440 0 0 0
+140 mV_4_1440 0 0 0
+141 mV_5_1440 0 0 0
+142 mV_6_1440 0 0 0
+143 mV_7_1440 0 0 0
+144 mV_8_1440 0 0 0
+145 mV_9_1440 0 0 0
+146 V_1_Rf    1 2 1
+147 V_2_Rf    0 0 0
+148 V_3_Rf    0 0 0
+149 V_4_Rf    0 0 0
+150 V_5_Rf    0 0 0
+151 V_6_Rf    0 0 0
+152 V_7_Rf    0 0 0
+153 V_8_Rf    0 0 0
+154 V_9_Rf    0 0 0
+155 mV_end_1  1 1 1
+156 mV_end_2  0 0 0
+157 mV_end_3  0 0 0
+158 mV_end_4  0 0 0
+159 mV_end_5  0 0 0
+160 mV_end_6  0 0 0
+161 mV_end_7  0 0 0
+162 mV_end_8  0 0 0
+163 mV_end_9  0 0 0
+164 work      1 4 4
+165 sap_P1a   7 1 1
+166 sap_P1b   11 1 0
+167 sap_P2a   11 1 0
+168 sap_P2b   11 1 0
+169 sap_P3a   11 1 0
+170 sap_P3b   11 1 0
+171 sap_P4a   11 1 0
+172 sap_P4b   11 1 0
+173 sap_P5a   11 1 0
+174 sap_P5b   0 0 0
+175 sap_J1a   0 0 0
+176 sap_J1b   0 0 0
+177 sap_J2a   0 0 0
+178 sap_J2b   0 0 0
+179 sap_J3a   0 0 0
+180 sap_J3b   0 0 0
+181 sap_J4a   0 0 0
+182 sap_J4b   0 0 0
+183 sap_J5a   0 0 0
+184 sap_J5b   19 1 0
+185 SCO2_P15  7 1 1
+186 SCO2_P110 11 1 0
+187 SCO2_P120 11 1 0
+188 SCO2_P140 11 1 0
+189 SCO2_P25  11 1 0
+190 SCO2_P210 11 1 0
+191 SCO2_P220 11 1 0
+192 SCO2_P240 19 1 0
+193 ca01on    1 1 1
+194 ca01off   1 1 1
+195 _________ 0 0 0
+-Program Security-
+0000
+0000
+0000
+-Mode 4-
+-Final Storage Area 2-
+0
+-CR10X ID-
+0
+-CR10X Power Up-
+3
+-CR10X Compile Setting-
+3
+-CR10X RS-232 Setting-
+-1
+-DLD File Labels-
+0
+-Final Storage Labels-
+0,Year_RTM,11136
+0,Day_RTM
+0,Hour_Minute_RTM
+1,100,30512
+2,shf_P1_AVG~119,26513
+2,shf_P2_AVG~120
+2,shf_P3_AVG~121
+2,shf_J1_AVG~122
+2,shf_J2_AVG~123
+2,shf_J3_AVG~124
+2,shf_O1_AVG~125
+2,shf_O2_AVG~126
+2,shf_O3_AVG~127
+3,hfp_cal_1~110,12058
+3,hfp_cal_2~111
+3,hfp_cal_3~112
+3,hfp_cal_4~113
+3,hfp_cal_5~114
+3,hfp_cal_6~115
+3,hfp_cal_7~116
+3,hfp_cal_8~117
+3,hfp_cal_9~118
+4,sap_P1a_AVG~165,20277
+4,sap_P1b_AVG~166
+4,sap_P2a_AVG~167
+4,sap_P2b_AVG~168
+4,sap_P3a_AVG~169
+4,sap_P3b_AVG~170
+4,sap_P4a_AVG~171
+4,sap_P4b_AVG~172
+4,sap_P5a_AVG~173
+4,sap_P5b_AVG~174
+5,SCO2_P15_AVG~185,813
+5,SCO2_P110_AVG~186
+5,SCO2_P120_AVG~187
+5,SCO2_P140_AVG~188
+5,SCO2_P25_AVG~189
+5,SCO2_P210_AVG~190
+5,SCO2_P220_AVG~191
+5,SCO2_P240_AVG~192
+6,T_P1_5_AVG~56,26685
+6,T_P1_10_AVG~57
+6,T_P1_30_AVG~58
+6,T_P2_5_AVG~59
+6,T_P2_10_AVG~60
+6,T_P2_30_AVG~61
+6,T_P3_5_AVG~62
+6,T_P3_10_AVG~63
+6,T_P3_30_AVG~64
+6,T_J1_5_AVG~65
+6,T_J1_10_AVG~66
+6,T_J1_30_AVG~67
+6,T_J2_5_AVG~68
+6,T_J2_10_AVG~69
+6,T_J2_30_AVG~70
+6,T_J3_5_AVG~71
+6,T_J3_10_AVG~72
+6,T_J3_30_AVG~73
+6,T_O1_5_AVG~74
+6,T_O1_10_AVG~75
+6,T_O1_30_AVG~76
+6,T_O2_5_AVG~77
+6,T_O2_10_AVG~78
+6,T_O2_30_AVG~79
+6,T_O3_5_AVG~80
+6,T_O3_10_AVG~81
+6,T_O3_30_AVG~82
+7,WC_P1_5_AVG~28,18214
+7,WC_P1_10_AVG~29
+7,WC_P1_30_AVG~30
+7,WC_P2_5_AVG~31
+7,WC_P2_10_AVG~32
+7,WC_P2_30_AVG~33
+7,WC_P3_5_AVG~34
+7,WC_P3_10_AVG~35
+7,WC_P3_30_AVG~36
+7,WC_J1_5_AVG~37
+7,WC_J1_10_AVG~38
+7,WC_J1_30_AVG~39
+7,WC_J2_5_AVG~40
+7,WC_J2_10_AVG~41
+7,WC_J2_30_AVG~42
+7,WC_J3_5_AVG~43
+7,WC_J3_10_AVG~44
+7,WC_J3_30_AVG~45
+7,WC_O1_5_AVG~46
+7,WC_O1_10_AVG~47
+7,WC_O1_30_AVG~48
+7,WC_O2_5_AVG~49
+7,WC_O2_10_AVG~50
+7,WC_O2_30_AVG~51
+7,WC_O3_5_AVG~52
+7,WC_O3_10_AVG~53
+7,WC_O3_30_AVG~54

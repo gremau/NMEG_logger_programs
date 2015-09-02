@@ -1,0 +1,489 @@
+'Program name: C:\Campbellsci\LoggerNet\Csi\NOAH II CR800.CR1
+'Date written: Feb/2008 created for NCAR (5 units in early 2008 and added 2 more in July 2008)
+' Four more units added 10/20/2008
+' Six more unit added Sept 2010  5 with CR1000 1 with CR800  all are 30 inch capacity
+'On 03/12/2010. Same as 30InchCR800 changed dump to 0.5 inch
+
+'=================================================
+'Collects 5 minute data from the following gauges:
+'        ETI Precipitation Gauge
+'        LI-COR Pyranometer
+'        HMP35C Temp/RH sensor
+'        RMYoung Junior Wind Speed and Direction
+'        Snow Depth Sensor
+'=================================================
+
+
+AngleDegrees
+'
+
+
+'Precip Program, writes an output record every minute
+'Flags.  Flag 1: Used for initializing variables
+
+'Ports.  CP1: Not used
+'        CP2: Not used
+Public Flag(2) As Boolean
+'        CP3: Not used
+'        CP4: Not used
+'        CP5: Not used
+'        CP7: Not used
+'        CP8: Not used
+'Analog inputs ETI.  
+
+'Analog inputs.  1H wht: Load cell
+'                1L green: Load cell
+'Excitation Channels.  VX1 red: Provides excitation to the full bridge for the load cel
+ '   ground near VX1 - black      
+
+
+'RM Young wind sentry
+'SE3  GRN
+'P1   RED
+'VX2  BLU
+'GND WHT/BLK/DRAIN
+
+'JUDD SNOW DEPTH SENSOR
+'12V  RED
+'GND  CLR/BLK
+'C1   GRN
+'3H   WHT
+'3L   BRN
+'NC   BLU
+
+'PYRANOMETER
+'4H   RED
+'4L   BLK
+'GND  WHT/CLR
+
+'HMP45C
+'SE9   YEL  TEMP
+'SE10  BLU   RH
+'GND   WHT/BLK/SHIELD
+
+ 'G     BLACK
+'SW12V   RED
+
+'\\\\\\\\\\\\\\\\\\\\\\\\\ DECLARATIONS /////////////////////////
+
+Public i1
+Public OutputFlag1
+Public Readit(20)
+Public Averageit
+Public DivBy20
+Public mult1
+Public add1
+Public mult2
+Public add2
+Public mult3
+Public add3
+Public mult4
+Public add4
+Public ActDepth
+Public ActTemp
+Public mvPerDeg
+Public mv4inch
+Public mv11inch
+Public mv18inch
+Public mv24inch
+Public mv30inch
+Public mvperhund12
+Public mvperhund34
+Public RefDepth
+Public Offset
+Public RefTemp
+Public DepCheck
+Public RefCheck
+Public LastDepth
+Public PosCTR
+Public NegCTR
+Public TotPulses
+Public DepthDiff
+Public Pulses
+Public WindLoops
+Public mvOut
+Public mvZero
+Public DivBy12
+Public BattVolts
+Public TestDepth
+Public DumpCtr
+Public PrecipCtr1
+Public PrecipCtr2
+Public TimeLimit
+Public Times1
+Public Div1
+Public Year
+Public ToDay
+Public Hour
+Public Minute
+Public Second
+Public TempDiff
+Public TempIncr
+Public ChkDepth
+
+'Licor LI200x Pyranometer
+Public SlrW
+Units SlrW=W/m2
+
+
+' RM Young variables
+Public WS_ms_precip
+Units WS_ms_precip=m/s
+Public WindDir_precip
+Units WindDir_precip=deg
+
+' Temperature/RH variables
+Public HMP_tmp_precip
+Units HMP_tmp_precip=C
+Public HMP_rh_precip
+Units HMP_rh_precip=percent
+
+
+Public CR1000_BattVolt
+'Judd variables
+'Judd Communications Depth Sensor (Ser# )
+'Red               12V
+'Black             G
+'Clear             G
+'Green             C1
+'White             3H
+'Brown             3L
+'Blue              Not Connected
+Public DpthTmp_C
+Public DpthJC_in
+
+'\\\\\\\\\\\\\\\\\\\\\\\\ OUTPUT SECTION ////////////////////////
+
+DataTable(precip_out,OutputFlag1,-1)
+    CardOut (0,17280)
+  	Sample(1, ActDepth, IEEE4)
+  	Sample(1, RefDepth, IEEE4)
+  	Sample(1, mvOut, IEEE4)
+  	Sample(1, ActTemp, FP2)
+  	Sample(1, RefTemp, FP2)
+    Average (1,WS_ms_precip,FP2,0)
+    FieldNames("Wspd:Average wind speed")
+    Maximum (1,WS_ms_precip,FP2,0,0)
+    FieldNames("Wspd_max:Maximum wind speed")
+    StdDev (1,WS_ms_precip,FP2,0)
+    FieldNames("Wspd_std:Standard deviation of wind speed")
+    Sample (1,WindDir_precip,FP2)
+    FieldNames("Wdir:Wind direction")
+    StdDev (1,WindDir_precip,FP2,0)
+    FieldNames("Wdir_std:Standard deviation of wind direction")
+    'Temp/RH data
+    Average(1, HMP_tmp_precip, FP2, 0)
+    FieldNames("Temp:Temperature")
+    Average(1, HMP_rh_precip, FP2, 0)
+    FieldNames("RH:Relative Humidity")
+    'judd data
+    Average (1,DpthJC_in,FP2,False)
+    FieldNames ("Snow depth")
+    Average (1,DpthTmp_C,FP2,False)
+    FieldNames ("Judd temp")
+    'Pyranometer
+     Average(1,SlrW,FP2,False)
+     FieldNames ("SolRad")
+    Sample(1,CR1000_BattVolt, FP2)
+EndTable
+
+'\\\\\\\\\\\\\\\\\\\\\\\\\ SUBROUTINES //////////////////////////
+
+
+'\\\\\\\\\\\\\\\\\\\\\\\\\\\ PROGRAM ////////////////////////////
+
+BeginProg
+
+	Scan(10,Sec, 3, 0)
+
+                'RM Young
+                '********************
+                'Wind Speed
+                PulseCount(WS_ms_precip,1,1,1,1,0.75,0.2)
+                If (WS_ms_precip<0.21) Then
+                        WS_ms_precip=0
+                EndIf
+
+                'Wind Dir
+                BrHalf(WindDir_precip,1,mV2500,3,VX2,1,2500,False,20000,250,352,0)
+                If (WindDir_precip>=360 OR WindDir_precip<0) Then
+                        WindDir_precip=0
+                EndIf
+
+                'Temperature/ RH
+                '********************
+                SW12(1)
+                Delay(0,150,mSec)
+                VoltSe(HMP_tmp_precip, 1, mV2500,10, False, 0, 250, 0.1,-40.0)
+                VoltSe(HMP_rh_precip, 1, mV2500,11, False, 0, 250, 0.1, 0)
+                SW12(0)
+                If HMP_rh_precip>0 AND HMP_rh_precip<108 Then HMP_rh_precip=100
+                
+                'Judd Depth Sensor
+                'Turn on the depth sensor
+                PortSet(1, 1)              
+                'Wait 0.6 seconds for the sensor to output the Air Temp.
+                Delay(0,600,MSEC)
+               'Air Temp is output in millivolts, scaled to K, convert to C
+                VoltDiff(DpthTmp_C, 1, mV2500,3, True, 0, 250, 0.2, -273) 
+               'The depth sensor needs another 1.0 seconds to make up
+               'to 10 measurements and perform error checking and temp compensation
+               'Note: 11/09/04 Change delay from 1.8 to 1.0 seconds
+                Delay(0,1000,MSEC)
+               'Distance is output in millivilts, scaled to inches, and then
+               'converted to depth by subtracting the distance measured from
+               'the reference distance. Use a multiplier of -.19685 for output
+               'in inches and -.5 for output in centimeters.
+               VoltDiff(DpthJC_in, 1, mV2500,3, True, 0, 250, -0.1968, 119.25) 
+               'Turn off depth sensor.
+                PortSet(1, 0) 
+                
+                'Measure the LI200x Pyranometer
+                 VoltDiff (SlrW,1,mV250,4,True ,0,_60Hz,1.0,0)
+                  
+                'Set negative values to zero
+                If SlrW<0 Then SlrW=0
+                
+                'convert mV to W/m2
+                 SlrW=SlrW*5.0
+                
+              
+                Battery (CR1000_BattVolt)   
+                
+                       
+
+'		'*** Initialize parameters for this particular load cell
+		OutputFlag1 = false
+		If  Flag(1) = False Then
+			'
+			'
+			'*******************************************************************************************************
+			'NOTE!  When calibrating a new load cell, record the values for millivolts output for precisely
+			'       measured readings at 2 inches, 12 inches, and 20 inches. The software will then calculate
+			'       four linear equation coefficients for 0 to 11 inches, 11 to 18 inches, 18 to 24 inches, and
+			'       24 to 30 inches in the form of INCHES = MULT * mvREADING + OFFSET. The calculated values
+			'       11 and 24 inches approximate the actual load cell characteristics curve. The "MULTx" and
+			'       the "ADDx" below correspond to MULT and OFFSET in each of the four linear equations.
+
+'      '*** ENTER PARAMETERS BELOW FOR THE LOAD CELL BY CALIBRATING AT 4, 18, AND 30 INCHES
+            mv4inch =  1.4224
+            mv18inch = 4.4647
+            mv30inch = 6.9039
+'			'Serial Number 550
+'			'*** SET TEMPERATURE COMPENSATION
+      mvPerDeg = -0.001
+'			mvPerDeg = -0.0009952  ncar specific cal for old load cell
+'
+'			'********************************************************************************************************
+
+			
+            mvperhund12 = (mv18inch - mv4inch) / 1400
+            mvperhund34 = (mv30inch - mv18inch) / 1200
+            mv11inch = mv4inch + (mv18inch - mv4inch) / 2 + mvperhund12 + .013 'new 8/31/2010
+            mv24inch = mv18inch + (mv30inch - mv18inch) / 2 + mvperhund34 + .01 'new 8/31/2010
+            
+            mult1 = 7 / (mv11inch - mv4inch)
+            mult2 = 7 / (mv18inch - mv11inch)
+            mult3 = 6 / (mv24inch - mv18inch)
+            mult4 = 6 / (mv30inch - mv24inch)
+            
+            add1 = 4 - mult1 * mv4inch
+            add2 = 18 - mult2 * mv18inch
+            add3 = 18 - mult3 * mv18inch
+            add4 = 30 - mult4 * mv30inch
+'
+'			'*** SET NUMBER OF LOOPS WHEN ACTUAL DEPTH CAN ONLY GO UP OR DOWN A SMALL AMOUNT
+			WindLoops = 9
+'
+'			'*** SET OTHER PARAMETERS
+			DivBy12 = 12
+			DivBy20 = 20
+			TimeLimit = 180
+			Times1 = 20
+			Div1 = 21
+'
+'			'*** SET TEMPERATURE INCREMENT THAT CAUSES RESET OF REFERENCE DEPTH
+			TempIncr = 0.5
+'
+		EndIf
+'
+		'*** TAKE 20 SAMPLES OF THE LOAD CELL VOLTAGE
+		Averageit = 0
+		For i1 = 1 To 20
+			BrFull(Readit(i1), 1, autorange, 1, VX1, 1, 2500, True, True, 0, 250, 2.5, 0)
+			Averageit = Averageit + Readit(i1)
+			Delay(0,100,MSEC)
+		Next i1
+
+		'*** GET THE AVERAGE OF THE 20 LOAD CELL VOLTAGE SAMPLES
+		Averageit = Averageit / DivBy20
+		mvOut = Averageit
+
+		'*** GET THE TEMPERATURE TO DO TEMPERATURE COMPENSATION
+		PanelTemp(ActTemp, 250)
+
+		'*** COMPUTE TEMPERATURE OFFSET FROM 20 DEGREES
+		Offset = ActTemp - 20
+		Offset = Offset * mvPerDeg
+		Averageit = Averageit - Offset
+
+		'*** CONVERT TO INCHES (DEPTH = INPUT VOLTAGE * MULTIPLIER + OFFSET
+
+		'If Averageit >= mv16inch Then
+		If Averageit >= mv24inch Then
+			ActDepth = Averageit * mult4 + add4
+		EndIf
+		'If Averageit < mv16inch Then
+		If Averageit < mv24inch Then
+			ActDepth = Averageit * mult3 + add3
+		EndIf
+		'If Averageit <= mv12inch Then
+		If Averageit <= mv18inch Then
+			ActDepth = Averageit * mult2 + add2
+		EndIf
+		'If Averageit <= mv7inch Then
+		If Averageit <= mv11inch Then
+			ActDepth = Averageit * mult1 + add1
+		EndIf
+
+		If  Flag(1) = False Then
+			'*** INITIALLY SET REFERENCE DEPTH TO ACTUAL DEPTH AND REFERENCE TEMPERATURE TO ACTUAL TEMP
+			RefDepth = ActDepth
+			RefTemp = ActTemp
+			LastDepth = ActDepth
+			Flag(1) = True
+		EndIf
+
+		'*** THE FOLLOWING ARE THE TWO NOISE DAMPENING ROUTINES
+
+		'*** FOR THE FIRST NINE TIMES OF ACTUAL DEPTH INCREASE, DON'T LET IT GO UP MORE THAN .0005 INCHES AT A TIME
+		DepCheck = ActDepth - LastDepth
+		If (DepCheck >= 0.0005) Then
+			NegCTR = 0
+			If (PrecipCtr2 > 0) Then
+				DepCheck = DepCheck * 0.5
+				ActDepth = LastDepth + DepCheck
+			Else
+				PosCTR = PosCTR + 1
+				If (PosCTR >= WindLoops) Then
+					DepCheck = DepCheck * 0.5
+					ActDepth = LastDepth + DepCheck
+					PosCTR = WindLoops
+				Else
+					ActDepth = LastDepth + 0.0005
+				EndIf
+			EndIf
+		EndIf
+
+		'*** FOR THE FIRST NINE TIMES OF ACTUAL DEPTH DECREASE, DON'T LET IT DROP MORE THAN .0005 INCHES AT A TIME
+		If (DepCheck < -0.0005) Then
+			PosCTR = 0
+			NegCTR = NegCTR + 1
+			If (NegCTR >= WindLoops) Then
+				DepCheck = DepCheck * 0.5
+				ActDepth = LastDepth + DepCheck
+				NegCTR = WindLoops
+			Else
+				ActDepth = LastDepth - 0.0005
+			EndIf
+		EndIf
+		LastDepth = ActDepth
+		'*** END OF THE NOISE DAMPENING ROUTINES
+
+		'*** THE FOLLOWING ARE THE TWO TEMPERATURE TRACKING ROUTINES
+
+		'*** CHECK FOR TEMPERATURE INCREASE
+		TempDiff = ActTemp - RefTemp
+		If (TempDiff >= TempIncr) Then
+			'*** TEMPERATURE HAS GONE UP BY XX DEGREES, SO RESET REFERENCE TEMPERATURE TO ACTUAL TEMP
+			RefTemp = ActTemp
+			'*** RESET REFERENCE DEPTH TO ACTUAL DEPTH IF ACTUAL DEPTH IS GREATER THAN REFERENCE DEPTH
+			If (ActDepth >= RefDepth) Then
+				RefDepth = ActDepth
+			EndIf
+		EndIf
+
+		'*** CHECK FOR TEMPERATURE DECREASE
+		TempDiff = RefTemp - ActTemp
+		If (TempDiff >= TempIncr) Then
+			'*** TEMPERATURE HAS GONE DOWN MORE THAN XX, SO RESET REFERENCE TEMP
+			RefTemp = ActTemp
+			'*** NOW CHECK TO SEE HOW MUCH ACTUAL DEPTH WENT DOWN, IF AT ALL
+			ChkDepth = RefDepth - ActDepth
+			'*** IF ACTUAL DEPTH WENT DOWN MORE THAN .005 INCHES, SET REFERENCE DEPTH DOWN BY ONLY .005 INCHES
+			If (ChkDepth >= 0.005) Then
+				RefDepth = RefDepth - 0.005
+			EndIf
+			'*** IF ACTUAL DEPTH WENT DONE ANY AMOUNT BELOW REFERENCE DEPTH (BUT LESS THAN .005), THEN RESET
+			'     REFERENCE DEPTH TO ACTUAL DEPTH
+			If (ChkDepth >= 0) Then
+				If (ChkDepth < .005) Then
+					RefDepth = ActDepth
+				EndIf
+			EndIf
+		EndIf
+		'*** END OF TEMPERATURE TRACKING
+
+		'*** NOW SEE IF WE HAD PRECIP
+		RefCheck = RefDepth + 0.01
+		If (ActDepth >= RefCheck) Then
+
+			'*** RESET REFERENCE DEPTH IN INCREMENTS OF 0.01 INCH AND RESET REFERENCE TEMPERATURE IF WE HAD PRECIP
+			DepthDiff = ActDepth - RefDepth
+			DepthDiff = DepthDiff * 100
+			DepthDiff = INT(DepthDiff)
+			DepthDiff = DepthDiff * 0.01
+			RefDepth = RefDepth + DepthDiff
+			PrecipCtr1 = 1
+			PrecipCtr2 = 1
+			RefTemp = ActTemp
+		EndIf
+
+		'*** IF IT'S BEEN MORE THAN XX MINUTES SINCE THE LAST PRECIP, SEE IF THE ACTUAL DEPTH IS
+		'    .005 INCHES ABOVE THE REFERENCE DEPTH. IF IT IS, OUTPUT A PULSE AND RAISE THE REFERENCE
+		'    DEPTH TO THE ACTUAL DEPTH.
+		If (PrecipCtr1 > 0) Then
+			PrecipCtr1 = PrecipCtr1 + 1
+			If (PrecipCtr1 >= TimeLimit) Then
+				DepthDiff = ActDepth - RefDepth
+				PrecipCtr1 = 0
+				If (DepthDiff >= 0.005) Then
+					RefDepth = ActDepth
+				EndIf
+			EndIf
+		EndIf
+
+		'*** THIS ROUTINE WILL RESET THE SOFTWARE IF THE BUCKET IS DUMPED. IT ASSUMES THE BUCKET
+		'    HAS BEEN DUMPED IF THE ACTUAL DEPTH FALLS 0.1 INCHES BELOW THE REFERENCE DEPTH FOR
+		'    5 MINUTES
+		TestDepth = RefDepth - ActDepth
+		If (TestDepth >= 0.5) Then
+			DumpCtr = DumpCtr + 1
+			'***DUMP TIME = 5 MINUTES (5 minutes * 6 executions per minute = 30)
+			If (DumpCtr = 30) Then
+				DumpCtr = 0
+				RefDepth = ActDepth
+			EndIf
+		Else
+			DumpCtr = 0
+		EndIf
+
+		'*** THIS KEEPS THE GAUGE FROM GOING THROUGH THE 9 LOOPS FOR 15 MINUTES AFTER A PRECIP PULSE
+		If (PrecipCtr2 > 0) Then
+			PrecipCtr2 = PrecipCtr2 + 1
+			If (PrecipCtr2 > 90) Then
+				PrecipCtr2 = 0
+			EndIf
+		EndIf
+
+		'*** WRITE AN OUTPUT RECORD EVERY 5 MINUTES
+		If  TimeIntoInterval(0,5,Min) Then
+			OutputFlag1=true
+			ActDepth = Round(ActDepth,3)
+			RefDepth = Round(RefDepth,3)
+			Battery(BattVolts)
+			CallTable precip_out
+			OutputFlag1 = false
+		EndIf
+	NextScan
+EndProg
