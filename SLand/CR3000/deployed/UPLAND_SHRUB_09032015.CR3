@@ -140,8 +140,7 @@
 '		LI-7500 ground (green)
 '		datalogger (black)
 
-
-PipelineMode
+PipeLineMode
 
 '*** Constants ***
 
@@ -974,9 +973,7 @@ BeginProg
     CG3DnCo = CG3Dn+5.67e-8*CNR1TK*CNR1TK*CNR1TK*CNR1TK
 
     VoltSe (par(1),1,mV50C,22,True,450,450,PAR_mult_KZ_up,0)
-    'VoltDiff (par(2),1,mV50C,6,True,450,450,PAR_mult_KZ_down,0)
-    VoltDiff (par(2),1,mV50C,6,True ,450,450,PAR_mult_KZ_down,0)
-    
+    VoltDiff (par(2),1,mV50C,6,True,450,450,PAR_mult_KZ_down,0)
 
     'Measure the HMP45C temperature and fraction humidity.
 
@@ -993,23 +990,7 @@ BeginProg
     e_sat = 0.1*(A_0+AirTC*(A_1+AirTC*(A_2+AirTC*(A_3+AirTC*(A_4+AirTC*(A_5+AirTC*A_6))))))
     e_hmp_mean = e_sat*RH
 
-    'Measure Apogee IR-T
-
-    'Instruction to measure sensor body temperature (green wire to SE23, white wire to VX3, blue wire to ground)
-    Therm109 (SBTempC,1,21,Vx2,200,250,1.0,0)
-
-    'Instruction to measure mV output of thermopile detector (red wire to 14H, black wire to 14L, clear wire to ground)
-    VoltDiff (TargmV,1,mV20,14,True,200,250,1.0,0)
-
-    'Calculation of m (slope) and b (intercept) coefficients for target temperature calculation
-    m = mC2 * SBTempC^2 + mC1 * SBTempC + mC0
-    b = bC2 * SBTempC^2 + bC1 * SBTempC + bC0
-
-    'Calculation of target temperature
-    SBTempK = SBTempC + 273.15
-    TargTempK = ((SBTempK^4) + m * TargmV + b)^0.25
-    TargTempC = TargTempK - 273.15
-
+ 
 
     PulseCount (rain,1,2,2,0,0.254,0)
 
@@ -1017,14 +998,8 @@ BeginProg
     Battery (batt_3000)
     low12V_3000 = Status.Low12VCount(1,1)
     watchdog_3000 = Status.WatchdogErrors(1,1)
-    
-    VoltDiff (battbank,1,mV5000,9,True,200,250,0.01,0)
-    VoltDiff (panelV,1,mV5000,13,True,200,250,0.01,0)
-    
 
-    'VoltDiff (battbank,1,mV5000,9,TRUE,200,250,0.01,0)
-  
-    'VoltDiff (panelV,1,mV5000,13,True,200,250,0.01,0)
+    
 
 
 
@@ -1259,4 +1234,33 @@ BeginProg
     EndIf
  NextScan
 
+
+SlowSequence
+
+
+   Scan (1,Min,3,0)
+     
+  'Measure Apogee IR-T
+
+    'Instruction to measure sensor body temperature (green wire to SE23, white wire to VX3, blue wire to ground)
+    Therm109 (SBTempC,1,21,Vx2,200,250,1.0,0)
+
+    'Instruction to measure mV output of thermopile detector (red wire to 14H, black wire to 14L, clear wire to ground)
+    VoltDiff (TargmV,1,mV20,14,True,200,250,1.0,0)
+
+    'Calculation of m (slope) and b (intercept) coefficients for target temperature calculation
+    m = mC2 * SBTempC^2 + mC1 * SBTempC + mC0
+    b = bC2 * SBTempC^2 + bC1 * SBTempC + bC0
+
+    'Calculation of target temperature
+    SBTempK = SBTempC + 273.15
+    TargTempK = ((SBTempK^4) + m * TargmV + b)^0.25
+    TargTempC = TargTempK - 273.15
+
+
+    VoltDiff (battbank,1,mV5000C,9,TRUE,200,250,0.01,0)
+  
+     VoltDiff (panelV,1,mV5000C,13,True,200,250,0.01,0)
+
+    NextScan
 EndProg

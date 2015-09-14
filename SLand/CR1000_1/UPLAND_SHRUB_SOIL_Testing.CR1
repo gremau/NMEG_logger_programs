@@ -7,6 +7,7 @@
 'Declare Public Variables
 'Example:
 SequentialMode
+
 Public PTemp, batt_volt
 
 'Declare Other Variables
@@ -56,7 +57,7 @@ Alias shf(3) = shf_op_1
 Alias shf(4) = shf_op_2
 
 Units shf = W/m^2
-Public shf_cal(4)	'Soil heat flux plate calibration coefficients.
+Dim shf_cal(4)	'Soil heat flux plate calibration coefficients.
 Units shf_cal = W/(m^2 mV)
 
 
@@ -168,9 +169,6 @@ Units TCAV=C
 
 
 
-
-
-
 'Define Data Tables.
 DataTable (soil_data,TRUE,-1) 'Set table size to # of records, or -1 to autoallocate.
   
@@ -198,8 +196,15 @@ BeginProg
 	  
   PanelTemp (panelT_1000,250)
   
+'Load the HFT3 factory calibration.
+  shf_cal(1) = HFP01_CAL_1
+  shf_cal(2) = HFP01_CAL_2
+  shf_cal(3) = HFP01_CAL_3
+  shf_cal(4) = HFP01_CAL_4
+  
 
-   AM25T (SoilT(1),20,mV25C,1,1,TypeT,mux_ref_temp,7,8 ,Vx1,True,200,250,1.0,0)
+   AM25T (SoilT(1),20,mV250C,1,1,TypeT,panelT_1000,7,8,Vx1,True,200,250,1,0)
+   
 
 
     mps6index=1
@@ -209,7 +214,7 @@ BeginProg
     SubScan (0,mSec,4)
       PulsePort (1,10000)
       ' Measure heatflux plates 1-4
-      VoltDiff (shf(ii),1,mV250C,2,True ,200,250,shf_cal(ii),0)
+      VoltDiff (shf(ii),1,mV250C,2,True,200,250,shf_cal(ii),0)
       ii=ii+1
       ' Measure MPS6 sensors 1-4
       PortSet(9,1)
@@ -296,13 +301,13 @@ BeginProg
     SubScan (0,msec,10)
       PulsePort (4,10000)
       
-      CS616 (SWC(iii),1,5,6,1,1.0,0)
-      CS616 (SWC(iii+1),1,6,6,1,1.0,0)
+      CS616 (SWC(iii),1,5,6,1,1,0)
+      CS616 (SWC(iii+1),1,6,6,1,1,0)
       iii=iii+2
     NextSubScan
     
    
-    PortSet (4,FALSE) 'Turn off soil moisture AM16/32.
+    PortSet (5,FALSE) 'Turn off soil moisture AM16/32.
 
 		CallTable soil_data
 
